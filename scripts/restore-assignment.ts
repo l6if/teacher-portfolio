@@ -1,4 +1,5 @@
 // استعادة بيانات التكليف التي مسحها الاختبار قبل إصلاح التحديث الجزئي
+// ⛔ الاستيراد من ملف آخر لا ينفّذ شيئًا — التنفيذ فقط بتشغيل مباشر (حماية إلزامية).
 import { PrismaClient } from '@prisma/client'
 const db = new PrismaClient()
 
@@ -39,4 +40,8 @@ async function main() {
   console.log('✓ تمت الاستعادة')
 }
 
-main().catch((e) => { console.error(e); process.exit(1) }).finally(() => db.$disconnect())
+// التنفيذ فقط عند التشغيل المباشر — الاستيراد لا ينفّذ شيئًا أبدًا.
+const isDirectRun = (import.meta as { main?: boolean }).main === true
+if (isDirectRun) {
+  main().catch((e) => { console.error(e); process.exit(1) }).finally(() => db.$disconnect())
+}

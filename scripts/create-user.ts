@@ -1,6 +1,8 @@
-// أداة تشغيل إدارية: إنشاء أول مستخدم (مدير أو معلم) في بيئة إنتاج نظيفة.
+// ═══ Production Bootstrap — إنشاء أول حساب إداري/مستخدم في بيئة إنتاج نظيفة ═══
+// هذه هي الأداة الرسمية لتهيئة أول حساب في الإنتاج (بدل seed التخريبي الممنوع هناك).
 // الاستخدام: bun scripts/create-user.ts <email> <password> <اسم> [TEACHER|MANAGER] [المدرسة] [التخصص]
 // مثال: bun scripts/create-user.ts admin@school.sa 'Str0ng!Pass' 'نورة القحطاني' MANAGER 'متوسطة الملك عبدالعزيز'
+// ⛔ الاستيراد من ملف آخر لا ينفّذ شيئًا — التنفيذ فقط بتشغيل مباشر (حماية إلزامية).
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../src/lib/auth'
 
@@ -35,6 +37,10 @@ async function main() {
   console.log(`تم إنشاء المستخدم: ${user.name} <${user.email}> بدور ${role}`)
 }
 
-main()
-  .catch((e) => { console.error(e); process.exit(1) })
-  .finally(() => db.$disconnect())
+// التنفيذ فقط عند التشغيل المباشر — الاستيراد لا ينفّذ شيئًا أبدًا.
+const isDirectRun = (import.meta as { main?: boolean }).main === true
+if (isDirectRun) {
+  main()
+    .catch((e) => { console.error(e); process.exit(1) })
+    .finally(() => db.$disconnect())
+}

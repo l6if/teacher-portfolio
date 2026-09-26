@@ -1,4 +1,9 @@
-// بيانات تجريبية غنية — للتطوير فقط، لا تُشغّل في الإنتاج أبدًا (انظر README)
+// بيانات تجريبية غنية — للتطوير فقط، لا تُشغّل في الإنتاج أبدًا (انظر README قسم 8)
+//
+// ⛔ حمايات إلزامية (شرط أمان أساسي — لا تُزلها):
+//   1) الاستيراد من أي ملف آخر لا ينفّذ seed أبدًا — التنفيذ فقط بتشغيل مباشر: bun prisma/seed.ts --reset
+//   2) يُرفض قاطعًا إذا NODE_ENV=production أو إذا كانت قاعدة البيانات غير ملف SQLite محلي (postgres/mysql/...)
+//   3) حتى في التطوير يتطلب علم --reset صريحًا — حماية من التشغيل العرضي الذي يمسح البيانات
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../src/lib/auth'
 
@@ -14,7 +19,42 @@ const lastYear = (month, day) => new Date(2026, month - 1, day, 10, 0)
 
 const UP = '/uploads'
 
+// ─── حمايات التشغيل (تُنفَّذ قبل أي عملية تخريبية) ───────────
+function refuse(msg: string, hint: string): never {
+  console.error('⛔ ' + msg)
+  console.error('   ' + hint)
+  process.exit(1)
+}
+
+/** seed التخريبي مسموح فقط على ملف SQLite محلي (file:...) — أي محرك خادم = بيئة حقيقية ممنوعة */
+function isLocalDevSqlite(url: string | undefined): boolean {
+  return !!url && url.trim().toLowerCase().startsWith('file:')
+}
+
 async function main() {
+  // الحماية 1: بيئة الإنتاج تُرفض قاطعًا — حتى مع --reset
+  if (process.env.NODE_ENV === 'production') {
+    refuse(
+      'NODE_ENV=production — seed التخريبي ممنوع في الإنتاج نهائيًا.',
+      'لإنشاء أول حساب إداري في الإنتاج: bun scripts/create-user.ts (انظر README قسم 8)',
+    )
+  }
+  // الحماية 2: أي قاعدة بيانات غير SQLite محلية (postgres/mysql/...) = بيئة حقيقية — ممنوعة
+  if (!isLocalDevSqlite(process.env.DATABASE_URL)) {
+    refuse(
+      'DATABASE_URL يشير إلى قاعدة بيانات خادم (postgres/mysql/...) — seed التخريبي ممنوع خارج بيئة تطوير SQLite المحلية.',
+      'للإنتاج: bun scripts/create-user.ts — seed يعمل فقط على ملف SQLite محلي للتطوير.',
+    )
+  }
+  // الحماية 3: علم --reset صريح حتى في التطوير (منع التشغيل العرضي/الأخطاء المطبعية)
+  if (!process.argv.includes('--reset')) {
+    refuse(
+      'seed يمسح كل بيانات قاعدة البيانات ويعيد تعبئتها ببيانات تجريبية.',
+      'للتأكيد المتعمد: bun prisma/seed.ts --reset  |  الاستيراد من ملف آخر لا ينفّذ seed أبدًا (حماية مقصودة).',
+    )
+  }
+
+  console.warn('⚠️ تشغيل seed تخريبي: سيتم مسح كل البيانات وإعادة تعبئتها ببيانات تجريبية...')
   await db.$transaction([
     db.evidenceLink.deleteMany(),
     db.attachment.deleteMany(),
@@ -741,6 +781,11 @@ async function main() {
   console.log(counts)
 }
 
-main()
-  .catch((e) => { console.error(e); process.exit(1) })
-  .finally(() => db.$disconnect())
+// التنفيذ فقط عند التشغيل المباشر (bun prisma/seed.ts) — استيراد هذا الملف لا ينفّذ شيئًا أبدًا.
+// import.meta.main خاصية Bun: true فقط إذا كان الملف نقطة دخول العملية.
+const isDirectRun = (import.meta as { main?: boolean }).main === true
+if (isDirectRun) {
+  main()
+    .catch((e) => { console.error(e); process.exit(1) })
+    .finally(() => db.$disconnect())
+}

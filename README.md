@@ -71,7 +71,7 @@ EvidenceLink (M2M): Attachment ↔ Achievement | Goal
 
 | المتغير | إلزامي؟ | الغرض |
 |---|---|---|
-| `DATABASE_URL` | نعم | مسار SQLite مثل `file:/abs/path/db/custom.db` (استخدم مسارًا مطلقًا في الإنتاج) |
+| `DATABASE_URL` | نعم | SQLite: `file:/abs/path/db/custom.db` — أو PostgreSQL: `postgresql://user:pass@host:5432/teacherfolio` (بعد الترحيل، انظر § 8) |
 | `SESSION_SECRET` | **نعم في الإنتاج** | مفتاح توقيع الجلسات — 32+ حرفًا عشوائيًا (`openssl rand -hex 32`) |
 | `UPLOAD_DIR` | لا | مجلد التخزين (افتراضي `<cwd>/storage/uploads`) — ضعه خارج مجلد البناء في الإنتاج |
 | `UPLOAD_MAX_MB` | لا | حد حجم الملفات العامة (افتراضي 25) |
@@ -94,6 +94,14 @@ bun run dev                     # http://localhost:3000
 
 حسابات seed (تطوير فقط): `sultan@madrasati.sa` (معلم)، `noura@madrasati.sa` (مديرة) — وكلمة المرور `***REMOVED-DEV-SECRET***` (أو قيمة `SEED_PASSWORD`).
 
+### أمان seed (شرط أمان أساسي — مُختبر فعليًا)
+
+- **الاستيراد لا ينفّذ شيئًا أبدًا**: أي `import` لملف `prisma/seed.ts` (أو أي سكربت) لا يمس البيانات — التنفيذ فقط بتشغيل مباشر.
+- **علم `--reset` صريح مطلوب** حتى في التطوير: `bun prisma/seed.ts --reset` — التشغيل العرضي بلا علم يُرفض فورًا.
+- **رفض قاطع في الإنتاج**: إذا `NODE_ENV=production` أو كان `DATABASE_URL` غير ملف SQLite محلي (postgres/mysql/...) يُرفض التنفيذ نهائيًا حتى مع `--reset` — رسالة واضحة تحوّلك إلى `scripts/create-user.ts`.
+- نفس حماية الاستيراد مطبّقة على كل السكربتات (`create-user.ts`, `restore-assignment.ts`, `use-db.ts`, `migrate-to-postgres.ts`).
+- `db:push` بلا `--accept-data-loss`: أي تغيير هدمي على المخطط يتطلب تأكيدًا تفاعليًا صريحًا.
+
 فحوصات الجودة:
 ```bash
 bun run typecheck   # صفر أخطاء TypeScript
@@ -101,6 +109,8 @@ bun run lint        # صفر أخطاء/تحذيرات ESLint
 ```
 
 ## 8) النشر الإنتاجي
+
+### الخيار أ — SQLite (خادم واحد)
 
 ```bash
 # 1) تجهيز البيئة
@@ -120,11 +130,38 @@ bun scripts/create-user.ts admin@school.sa 'كلمة-مرور-قوية' 'اسم 
 PORT=3000 bun .next/standalone/server.js
 ```
 
+### الخيار ب — PostgreSQL (مُختبر فعليًا بنفس البيانات والمعرفات)
+
+ترحيل كامل ومُتحقق منه: 81 صفًا (5 مستخدمين + 40 إنجازًا + 12 رابط شاهد...) بنفس المعرفات والعلاقات والطوابع الزمنية، والتطبيق يجتاز الدخول/اللوحة/الإنجازات/البحث/التقارير على PostgreSQL.
+
+```bash
+# 1) قاعدة PostgreSQL جاهزة (مثال):
+#    createdb teacherfolio
+
+# 2) ترحيل البيانات من SQLite (قبل تبديل التطبيق):
+bun scripts/migrate-to-postgres.ts "postgresql://user:pass@host:5432/teacherfolio"
+#    --fresh لإعادة ترحيل نظيف (يمسح الهدف فقط — المصدر لا يُمس أبدًا)
+#    --from db/custom.db لتحديد مصدر غير الافتراضي
+#    يتحقق من تطابق عدد الصفوف لكل جدول قبل النجاح
+
+# 3) تبديل التطبيق إلى PostgreSQL:
+bun scripts/use-db.ts postgres        # يبدّل سطر المزوّد فقط ثم prisma generate
+export DATABASE_URL="postgresql://user:pass@host:5432/teacherfolio"
+
+# 4) بناء وتشغيل كالمعتاد + أول مستخدم عبر create-user
+bun run build
+bun scripts/create-user.ts admin@school.sa 'كلمة-مرور-قوية' 'اسم المدير' MANAGER 'اسم المدرسة'
+```
+
+- للعودة إلى SQLite: `bun scripts/use-db.ts sqlite` + `DATABASE_URL=file:...` (عكس كامل مُختبر).
+- عميل الترحيل (`.pg-client`) منفصل عن عميل التطبيق فلا يتعارضان.
+- نفس نماذج البيانات وأسماء الحقول حرفيًا — لا تغيير مخطط إطلاقًا.
+
 ملاحظات نشر مهمة:
-- **لا تشغّل `db:seed` في الإنتاج** — أنشئ الحسابات عبر `scripts/create-user.ts`.
-- اعمل نسخًا احتياطية دورية من ملف SQLite ومجلد `UPLOAD_DIR`.
+- **لا تشغّل `db:seed` في الإنتاج** — يُرفض تلقائيًا أصلًا (انظر أمان seed أعلاه) — أنشئ الحسابات عبر `scripts/create-user.ts`.
+- اعمل نسخًا احتياطية دورية من قاعدة البيانات ومجلد `UPLOAD_DIR`.
 - خلف وكيل عكسي (Nginx/Caddy) مع HTTPS، وحدّ حجم جسم الطلب بما يوازي حدود الرفع.
-- خادم واحد فقط يفتح قاعدة SQLite (لا يصلح للتوسع الأفقي كما هو — انظر المخاطر).
+- خادم واحد فقط يفتح قاعدة SQLite (للتوسع الأفقي استخدم الخيار ب — PostgreSQL).
 
 ## 9) المساعد الذكي (حدود واضحة)
 
