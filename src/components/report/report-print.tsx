@@ -12,57 +12,18 @@ import {
   AchievementCase, ReportHeader, PrintFooter, EmptyNote, PageBreak,
   Metric, ImpactRow,
 } from './report-parts'
+import { OfficialReport } from './official-report'
+import { ReportImageProvider } from './report-image-context'
+import type { PrintConfig } from '@/store/app-store'
+import type { ReportData } from '@/hooks/use-data'
 
 /* ═══════════════════════════════════════════════════════════════
-   محرك التقارير المطبوعة — القوالب الخمسة + المخصص
+   محرك التقارير المطبوعة — القوالب الخمسة + المخصص + الرسمي
+   ReportBody: نفس مكونات التقرير للطباعة والمعاينة معًا (WYSIWYG)
    يُعرض فقط أثناء الطباعة (#print-root) ويحتفظ بمنطق التفعيل كما هو
    ═══════════════════════════════════════════════════════════════ */
 
-export function ReportPrint() {
-  const config = useApp((s) => s.printConfig)
-  const setPrintConfig = useApp((s) => s.setPrintConfig)
-  const { data, isLoading, error, refetch } = useReport()
-
-  useEffect(() => {
-    if (!config || !data || error) return
-    let cancelled = false
-
-    const t = setTimeout(async () => {
-      const root = document.getElementById('print-root')
-      const imgs = Array.from(root?.querySelectorAll('img') ?? [])
-      await Promise.all(
-        imgs.map((img) =>
-          img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res() }),
-        ),
-      )
-      if (cancelled) return
-      window.print()
-    }, 900)
-
-    const after = () => {
-      setTimeout(() => { if (!cancelled) setPrintConfig(null) }, 600)
-    }
-    window.addEventListener('afterprint', after)
-    return () => {
-      cancelled = true
-      clearTimeout(t)
-      window.removeEventListener('afterprint', after)
-    }
-  }, [config, data, error, setPrintConfig])
-
-  if (!config) return null
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
-          <p className="text-sm text-gray-600">جارٍ تجهيز التقرير…</p>
-        </div>
-      </div>
-    )
-  }
-  if (error || !data) return null
-
+export function ReportBody({ config, data }: { config: PrintConfig; data: ReportData }) {
   const { user, year, goals, achievements, reflection, devPlans, completion } = data
   const dateStr = formatDate(new Date())
   const byType = (types: string[]) => achievements.filter((a) => types.includes(a.type))
@@ -99,6 +60,24 @@ export function ReportPrint() {
 
   const footer = <PrintFooter name={user.name} year={year.label} />
   const rootStyle: React.CSSProperties = { fontFamily: 'var(--font-readex), Tahoma, sans-serif', color: RC.ink }
+
+  /* ═══ القالب 6 — التقرير الرسمي للإنجاز (إنجاز واحد) ═══ */
+  if (config.mode === 'official') {
+    const a = achievements.find((x) => x.id === config.achievementId)
+    if (!a) {
+      return (
+        <div dir="rtl" style={rootStyle}>
+          <EmptyNote label="الإنجاز المطلوب غير موجود" />
+        </div>
+      )
+    }
+    return (
+      <div dir="rtl" style={rootStyle}>
+        {footer}
+        <OfficialReport a={a} data={data} />
+      </div>
+    )
+  }
 
   /* ═══ القالب 1 — ملف الإنجاز الكامل + المخصص ═══ */
   if (config.mode === 'full' || config.mode === 'custom') {
@@ -405,4 +384,58 @@ export function ReportPrint() {
   }
 
   return null
+}
+
+/* ═══ غلاف الطباعة — يفعّل نافذة الطباعة بعد اكتمال الصور ═══ */
+
+export function ReportPrint() {
+  const config = useApp((s) => s.printConfig)
+  const setPrintConfig = useApp((s) => s.setPrintConfig)
+  const { data, isLoading, error, refetch } = useReport()
+
+  useEffect(() => {
+    if (!config || !data || error) return
+    let cancelled = false
+
+    const t = setTimeout(async () => {
+      const root = document.getElementById('print-root')
+      const imgs = Array.from(root?.querySelectorAll('img') ?? [])
+      await Promise.all(
+        imgs.map((img) =>
+          img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res() }),
+        ),
+      )
+      if (cancelled) return
+      window.print()
+    }, 900)
+
+    const after = () => {
+      setTimeout(() => { if (!cancelled) setPrintConfig(null) }, 600)
+    }
+    window.addEventListener('afterprint', after)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+      window.removeEventListener('afterprint', after)
+    }
+  }, [config, data, error, setPrintConfig])
+
+  if (!config) return null
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+          <p className="text-sm text-gray-600">جارٍ تجهيز التقرير…</p>
+        </div>
+      </div>
+    )
+  }
+  if (error || !data) return null
+
+  return (
+    <ReportImageProvider variant="print">
+      <ReportBody config={config} data={data} />
+    </ReportImageProvider>
+  )
 }

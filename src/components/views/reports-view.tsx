@@ -1,19 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useApp } from '@/store/app-store'
 import { useReport } from '@/hooks/use-data'
-import { SECTIONS } from '@/lib/constants'
+import { SECTIONS, TYPE_LABEL } from '@/lib/constants'
 import { Icon } from '@/components/shared/icon'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingState, ErrorState, EmptyState } from '@/components/shared/states'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, formatDateShort } from '@/lib/format'
+import { officialTitle } from '@/components/report/official-report'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 
 interface ReportDef {
-  key: 'full' | 'summary' | 'impact' | 'pd' | 'initiatives' | 'custom'
+  key: 'full' | 'official' | 'summary' | 'impact' | 'pd' | 'initiatives' | 'custom'
   title: string
   desc: string
   icon: string
@@ -26,6 +30,11 @@ const REPORTS: ReportDef[] = [
     key: 'full', title: 'تقرير ملف الإنجاز الكامل', icon: 'BookOpen', pages: 'متعدد الصفحات',
     desc: 'غلاف فاخر، فهرس تلقائي، صفحة عنوان لكل مجال، وكل إنجاز بتفاصيله وشواهده — التقرير الرسمي لملفك.',
     accent: 'from-emerald-600 to-teal-700',
+  },
+  {
+    key: 'official', title: 'التقرير الرسمي للإنجاز', icon: 'FileBadge', pages: 'صفحة A4 غالبًا',
+    desc: 'تقرير تنفيذ رسمي لإنجاز واحد: ترويسة الجهة، معلومات عامة، أهداف، تنفيذ، نتائج وأثر، صور، وتوقيع — بروح التقارير المدرسية الرسمية.',
+    accent: 'from-slate-700 to-emerald-700',
   },
   {
     key: 'summary', title: 'تقرير ملخص الإنجازات', icon: 'ClipboardList', pages: 'صفحة أو صفحتان',
@@ -55,9 +64,19 @@ const REPORTS: ReportDef[] = [
 ]
 
 export function ReportsView() {
-  const setPrintConfig = useApp((s) => s.setPrintConfig)
+  const setPreviewConfig = useApp((s) => s.setPreviewConfig)
   const { data, isLoading, error, refetch } = useReport()
   const [selected, setSelected] = useState<string[]>([])
+  const [officialId, setOfficialId] = useState<string>('')
+
+  const achievements = useMemo(() => {
+    if (!data) return []
+    return [...data.achievements]
+      .filter((a) => a.status !== 'DRAFT')
+      .sort((a, b) => (b.date ? +new Date(b.date) : 0) - (a.date ? +new Date(a.date) : 0))
+  }, [data])
+
+  const officialAch = achievements.find((a) => a.id === officialId)
 
   if (isLoading) return <LoadingState rows={2} />
   if (error || !data) return <ErrorState message="تعذر تحميل بيانات التقارير." onRetry={() => refetch()} />
@@ -66,7 +85,8 @@ export function ReportsView() {
   const counts = completion.counts
   const hasData = counts.achievements > 0
 
-  const generate = (mode: ReportDef['key'], sections: string[] = []) => {
+  /** الإجراء الأساسي لكل القوالب: المعاينة أولًا — ومنها التنزيل */
+  const preview = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
     if (!hasData) {
       toast.info('أضف إنجازًا واحدًا على الأقل حتى يستحق التقرير الطباعة')
       return
@@ -76,7 +96,18 @@ export function ReportsView() {
       toast.error('اختر مجالًا واحدًا على الأقل للتصدير المخصص')
       return
     }
-    setPrintConfig({ mode, sections, title: def.title })
+    if (mode === 'official' && !achievementId) {
+      toast.error('اختر الإنجاز المراد إصدار التقرير الرسمي له')
+      return
+    }
+    setPreviewConfig({
+      mode,
+      sections,
+      title: mode === 'official' && achievementId
+        ? officialTitle(achievements.find((a) => a.id === achievementId)?.type ?? 'OTHER')
+        : def.title,
+      achievementId,
+    })
   }
 
   return (
@@ -84,7 +115,7 @@ export function ReportsView() {
       <PageHeader
         crumbs={[{ label: 'التقارير' }]}
         title="التقارير الاحترافية"
-        description={`حوّل ملف إنجازك في ${year.label} إلى تقارير أنيقة جاهزة للطباعة والمشاركة — بدون قطع سيئ للنصوص.`}
+        description={`حوّل ملف إنجازك في ${year.label} إلى تقارير أنيقة — عاينها بدقة الطباعة أولًا ثم نزّلها PDF.`}
         icon="FileText"
       />
 
@@ -151,26 +182,55 @@ export function ReportsView() {
                 </div>
               )}
 
+              {r.key === 'official' && (
+                <div className="mt-4 space-y-2 rounded-2xl border border-border bg-muted/30 p-3.5">
+                  <p className="text-xs font-medium text-foreground">اختر الإنجاز:</p>
+                  <Select dir="rtl" value={officialId || undefined} onValueChange={setOfficialId}>
+                    <SelectTrigger dir="rtl" className="h-11 w-full rounded-xl bg-card text-right text-sm font-semibold shadow-xs" aria-label="اختيار الإنجاز">
+                      <SelectValue placeholder="إنجاز، برنامج، مبادرة، نشاط…" />
+                    </SelectTrigger>
+                    <SelectContent dir="rtl" className="max-h-72">
+                      {achievements.map((a) => (
+                        <SelectItem key={a.id} value={a.id} className="h-11 text-sm">
+                          <span className="block truncate">
+                            <span className="text-muted-foreground">{TYPE_LABEL(a.type)} — </span>
+                            {a.title}
+                            {a.date ? <span className="text-muted-foreground"> ({formatDateShort(a.date)})</span> : null}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {officialAch && (
+                    <p className="rounded-xl bg-secondary/60 px-3 py-2 text-[11px] leading-5 text-secondary-foreground">
+                      سيُصدر بعنوان: <span className="font-bold text-primary">{officialTitle(officialAch.type)}</span>
+                      {user.school ? ` — ${user.school}` : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <Button
-                onClick={() => generate(r.key, selected)}
+                onClick={() => preview(r.key, selected, officialId)}
                 disabled={!hasData}
                 className="mt-4 min-h-11 w-full gap-2 rounded-full shadow-soft"
-                variant={r.key === 'full' ? 'default' : 'outline'}
+                variant={r.key === 'full' || r.key === 'official' ? 'default' : 'outline'}
               >
-                <Icon name="Printer" className="size-4" />
-                {r.key === 'custom' ? 'إنشاء التقرير' : 'إنشاء PDF'}
+                <Icon name="Eye" className="size-4" />
+                معاينة التقرير
               </Button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* تلميح الطباعة */}
+      {/* تلميح المعاينة */}
       <div className="mt-6 flex items-start gap-3 rounded-2xl bg-secondary/60 p-4 text-xs leading-6 text-secondary-foreground anim-fade-up">
         <Icon name="Info" className="mt-0.5 size-4 shrink-0" />
         <p>
-          عند الضغط على «تصدير PDF» يفتح حوار الطباعة — اختر «حفظ بصيغة PDF» وجهّز الطابعة أو الحفظ.
-          التصميم مهيأ تلقائيًا لمقاس A4 مع هوامش مريحة ورأس وتذييل احترافيين، ولن تُقطع البطاقات والجداول بين الصفحات.
+          سير العمل الجديد: أعدّ التقرير ثم <span className="font-bold text-primary">عاينه كما سيُطبع</span> — صفحات A4 حقيقية
+          بإزاحة وهوية الطباعة نفسها — ومن شريط المعاينة نزّل PDF أو ارجع للتعديل دون فقدان شيء.
+          عند التنزيل يفتح حوار الطباعة: اختر «حفظ بصيغة PDF» — التصميم مهيأ لمقاس A4 بلا قطع للبطاقات والجداول.
         </p>
       </div>
     </div>

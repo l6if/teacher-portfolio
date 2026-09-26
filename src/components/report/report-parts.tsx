@@ -7,6 +7,7 @@ import { SECTIONS, TYPE_LABEL, STATUS_LABEL } from '@/lib/constants'
 import { formatDate, formatNumber, improvement } from '@/lib/format'
 import { LoadingState, ErrorState } from '@/components/shared/states'
 import { RC, S, RT, RR, REPORT_BRAND, FIELD_LABELS, footerLine } from '@/lib/report-tokens'
+import { useReportImages } from './report-image-context'
 import type { TAchievement, TAttachment } from '@/lib/types'
 import type { ReportData } from '@/hooks/use-data'
 
@@ -61,6 +62,7 @@ export function DocChip({ a }: { a: TAttachment }) {
 
 /** معرض صور تحريري — 1: Hero / 2: نصفان / 3: أثلاث / 4+: شبكة 2×2 */
 export function Gallery({ images }: { images: (TAttachment & { url: string })[] }) {
+  const { toImgUrl } = useReportImages()
   if (!images.length) return null
   const rows: typeof images[] = []
   if (images.length <= 3) rows.push(images)
@@ -81,7 +83,7 @@ export function Gallery({ images }: { images: (TAttachment & { url: string })[] 
           {row.map((img) => (
             <figure key={img.id} style={{ margin: 0, flex: 1, minWidth: 0 }}>
               <img
-                src={img.url}
+                src={toImgUrl(img.url)}
                 alt={img.title}
                 style={{ width: '100%', height: config.height, objectFit: 'cover', borderRadius: config.radius, border: `0.7px solid ${RC.line}`, display: 'block' }}
               />

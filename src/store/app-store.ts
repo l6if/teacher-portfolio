@@ -8,9 +8,11 @@ export type View =
   | 'reports' | 'journey' | 'manager' | 'profile'
 
 export interface PrintConfig {
-  mode: 'full' | 'summary' | 'impact' | 'pd' | 'initiatives' | 'custom'
+  mode: 'full' | 'summary' | 'impact' | 'pd' | 'initiatives' | 'custom' | 'official'
   sections: string[]
   title: string
+  /** للتقرير الرسمي — معرّف الإنجاز المستهدف */
+  achievementId?: string
 }
 
 interface AppState {
@@ -27,6 +29,8 @@ interface AppState {
 
   searchOpen: boolean
   printConfig: PrintConfig | null
+  /** معاينة التقرير — مرحلة مستقلة قبل التنزيل */
+  previewConfig: PrintConfig | null
 
   navigate: (view: View, opts?: { sectionKey?: SectionKey }) => void
   openForm: (opts?: { type?: AchievementType | null; achievementId?: string | null }) => void
@@ -35,6 +39,7 @@ interface AppState {
   setViewUser: (userId: string | null, name?: string | null) => void
   setSearchOpen: (open: boolean) => void
   setPrintConfig: (config: PrintConfig | null) => void
+  setPreviewConfig: (config: PrintConfig | null) => void
 }
 
 export const useApp = create<AppState>((set) => ({
@@ -50,6 +55,7 @@ export const useApp = create<AppState>((set) => ({
 
   searchOpen: false,
   printConfig: null,
+  previewConfig: null,
 
   navigate: (view, opts) =>
     set((s) => ({
@@ -64,4 +70,5 @@ export const useApp = create<AppState>((set) => ({
   setViewUser: (viewUserId, viewUserName) => set({ viewUserId, viewUserName }),
   setSearchOpen: (searchOpen) => set({ searchOpen }),
   setPrintConfig: (printConfig) => set({ printConfig }),
+  setPreviewConfig: (previewConfig) => set({ previewConfig }),
 }))

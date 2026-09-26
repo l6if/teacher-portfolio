@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 interface ProfileForm {
   name: string; school: string; subject: string; qualification: string
   experienceYears: string; stage: string; classes: string; licenseNumber: string; duties: string
+  educationAdmin: string; educationOffice: string; principalName: string
 }
 
 const PROFILE_FIELDS: { key: keyof ProfileForm; label: string; placeholder?: string; type?: string }[] = [
@@ -24,6 +25,13 @@ const PROFILE_FIELDS: { key: keyof ProfileForm; label: string; placeholder?: str
   { key: 'classes', label: 'الصفوف التي تدرسها', placeholder: 'مثال: أول متوسط (1، 3) — ثاني متوسط (2)' },
   { key: 'licenseNumber', label: 'الرخصة المهنية', placeholder: 'رقم الرخصة أو وصفها' },
   { key: 'duties', label: 'المهام المكلف بها', placeholder: 'مثال: معلم أول — مشرف ركن القراءة' },
+]
+
+/** حقول جهة العمل — تظهر في ترويسة التقرير الرسمي وتوقيعه */
+const OFFICIAL_FIELDS: { key: keyof ProfileForm; label: string; placeholder?: string }[] = [
+  { key: 'educationAdmin', label: 'الإدارة التعليمية', placeholder: 'مثال: إدارة تعليم الرياض' },
+  { key: 'educationOffice', label: 'مكتب التعليم', placeholder: 'مثال: مكتب تعليم شمال الرياض' },
+  { key: 'principalName', label: 'اسم مدير/ة المدرسة', placeholder: 'مثال: أ. نورة العتيبي' },
 ]
 
 type UserLike = NonNullable<ReturnType<typeof useSession>['data']>['user']
@@ -79,6 +87,7 @@ function ProfileFieldsForm({ user }: { user: UserLike }) {
     name: user.name ?? '', school: user.school ?? '', subject: user.subject ?? '',
     qualification: user.qualification ?? '', experienceYears: user.experienceYears?.toString() ?? '',
     stage: user.stage ?? '', classes: user.classes ?? '', licenseNumber: user.licenseNumber ?? '', duties: user.duties ?? '',
+    educationAdmin: user.educationAdmin ?? '', educationOffice: user.educationOffice ?? '', principalName: user.principalName ?? '',
   }))
   const auto = useAutoSave('/api/profile', 'PUT', () => form, true)
 
@@ -124,6 +133,34 @@ function ProfileFieldsForm({ user }: { user: UserLike }) {
         ))}
       </div>
 
+      {/* بيانات جهة العمل — ترويسة وتوقيع التقرير الرسمي */}
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-2xl bg-secondary text-primary">
+            <Icon name="Landmark" className="size-5" strokeWidth={1.8} />
+          </span>
+          <div>
+            <h4 className="text-sm font-bold text-foreground">بيانات جهة العمل للتقارير الرسمية</h4>
+            <p className="mt-0.5 text-xs text-muted-foreground">تظهر في ترويسة «التقرير الرسمي للإنجاز» وفي خانة توقيع مدير/ة المدرسة.</p>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {OFFICIAL_FIELDS.map((f) => (
+            <div key={f.key} className="space-y-1.5">
+              <label htmlFor={`pf-${f.key}`} className="text-sm font-medium text-foreground">{f.label}</label>
+              <Input
+                id={`pf-${f.key}`}
+                dir="rtl"
+                value={form[f.key]}
+                onChange={(e) => set(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                className="bg-card"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="flex items-center gap-3 rounded-2xl bg-secondary/50 px-4 py-3 text-xs leading-5 text-secondary-foreground">
         <Icon name="Info" className="size-4 shrink-0" />
         بياناتك المهنية تنتقل معك تلقائيًا إلى أي عام دراسي جديد تنشئه — لا تحتاج لإعادة إدخالها كل عام.
@@ -156,7 +193,7 @@ export function ProfileSection({ readonly }: { readonly: boolean }) {
   if (readonly) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {PROFILE_FIELDS.map((f) => (
+        {[...PROFILE_FIELDS, ...OFFICIAL_FIELDS].map((f) => (
           <div key={f.key} className="rounded-2xl border border-border bg-card p-4">
             <p className="text-[11px] text-muted-foreground">{f.label}</p>
             <p className="mt-1.5 text-sm font-medium leading-6 text-foreground">{String((user as unknown as Record<string, unknown>)?.[f.key] ?? '') || '—'}</p>

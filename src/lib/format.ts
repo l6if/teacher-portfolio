@@ -31,6 +31,8 @@ export function relTime(d: string | Date | null | undefined): string {
   return relFmt.format(Math.round(months / 12), 'year')
 }
 
+const relFmt = new Intl.RelativeTimeFormat('ar', { numeric: 'auto' })
+
 export function formatNumber(n: number | null | undefined): string {
   if (n === null || n === undefined) return '—'
   return new Intl.NumberFormat('ar-u-nu-latn').format(n)

@@ -243,6 +243,102 @@
 /* ═══ طباعة التقارير — A4 تحريري احترافي ═════════════════════════ */
 #print-root { display: none; }
 
+/* ═══ معاينة التقرير — صفحات A4 حقيقية قبل التنزيل ═════════════ */
+#report-preview-overlay { background: #E9EBEC; }
+
+.rp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  padding-top: calc(0.625rem + env(safe-area-inset-top, 0px));
+  background: #14231F;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.rp-scroll { scroll-snap-type: y proximity; }
+
+.rp-card {
+  position: relative;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08), 0 12px 32px -8px rgba(16, 24, 40, 0.18);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.rp-window { position: relative; overflow: hidden; }
+
+/* التذييل داخل بطاقة المعاينة — بروح الطباعة الثابت أسفل كل صفحة */
+.rp-card-footer {
+  position: absolute;
+  bottom: 12mm;
+  right: 15mm;
+  left: 15mm;
+}
+.rp-card-footer .print-footer {
+  position: static;
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.5px;
+  color: #66786F;
+  letter-spacing: 0.03em;
+  border-top: 0.6px solid #D9E3DF;
+  padding-top: 2mm;
+}
+
+/* نسخة التذييل داخل مجرى المحتوى تُخفى — تظهر نسخة البطاقة بدلها */
+.rp-window .print-footer { display: none !important; }
+
+/* صفحة غير محمّلة بعد (تحميل كسول) */
+.rp-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FBFCFC;
+}
+.rp-placeholder span {
+  font-size: 15px;
+  font-weight: 700;
+  color: #B4C6C0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* شريط التنقل السفلي */
+.rp-nav {
+  position: fixed;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(20, 35, 31, 0.92);
+  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px -6px rgba(16, 24, 40, 0.35);
+  z-index: 10;
+}
+
+/* طبقة القياس — مخفية بصريًا لكن تخضع للتخطيط الكامل */
+.rp-measure {
+  position: fixed;
+  top: 0;
+  left: -12000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+.rp-measure .print-footer { display: none !important; }
+
+@media print {
+  /* المعاينة تختفي أثناء الطباعة — يتولى #print-root المحتوى نفسه */
+  #report-preview-overlay { display: none !important; }
+  .rp-measure { display: none !important; }
+}
+
 @media print {
   @page {
     size: A4 portrait;

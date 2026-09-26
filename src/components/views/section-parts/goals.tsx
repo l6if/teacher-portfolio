@@ -8,6 +8,7 @@ import { Icon } from '@/components/shared/icon'
 import { ProgressBar } from '@/components/shared/progress'
 import { EmptyState, LoadingState, ErrorState } from '@/components/shared/states'
 import { formatDateShort, formatNumber, toDateInput } from '@/lib/format'
+import { HijriDateField } from '@/components/shared/hijri-date-picker'
 import { SCOPE_LABELS } from '@/lib/constants'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -93,11 +94,11 @@ function GoalDialog({ open, onOpenChange, goal }: { open: boolean; onOpenChange:
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">تاريخ البداية</label>
-              <Input dir="ltr" type="date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
+              <HijriDateField value={form.startDate} onChange={(iso) => set('startDate', iso)} placeholder="اختر التاريخ" />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">تاريخ النهاية</label>
-              <Input dir="ltr" type="date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} />
+              <HijriDateField value={form.endDate} onChange={(iso) => set('endDate', iso)} placeholder="اختر التاريخ" />
             </div>
           </div>
           <div className="space-y-1.5">

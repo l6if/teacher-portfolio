@@ -26,6 +26,11 @@ model User {
   duties          String?
   photoUrl        String?
 
+  // بيانات جهة العمل — ترويسة التقرير الرسمي (كلها اختيارية)
+  educationAdmin  String? // الإدارة التعليمية — مثال: إدارة تعليم الرياض
+  educationOffice String? // مكتب التعليم — مثال: مكتب تعليم شمال الرياض
+  principalName   String? // اسم مدير/ة المدرسة — خانة التوقيع في التقرير الرسمي
+
   // التكليف والنصاب
   weeklyLoad  Int?
   schedule    String? // JSON [{day, grade, periods}]

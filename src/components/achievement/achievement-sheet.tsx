@@ -7,6 +7,7 @@ import { useScope, useAchievements } from '@/hooks/use-data'
 import { TYPES, TYPE_MAP, TYPE_FIELDS, STATUS_META, type AchievementType, type AchievementStatus } from '@/lib/constants'
 import { Icon } from '@/components/shared/icon'
 import { AttachmentsEditor } from './attachments-editor'
+import { HijriDateField } from '@/components/shared/hijri-date-picker'
 import { improvement, formatNumber, toDateInput } from '@/lib/format'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -336,7 +337,12 @@ export function AchievementSheet() {
           {def.optional && <span className="mr-1.5 text-[11px] font-normal text-muted-foreground">(اختياري)</span>}
         </label>
         {def.type === 'date' ? (
-          <Input dir="ltr" type="date" disabled={disabled} value={form.date ?? ''} onChange={(e) => setField('date', e.target.value)} className="bg-card" />
+          <HijriDateField
+            value={form.date ?? ''}
+            onChange={(iso) => setField('date', iso)}
+            disabled={disabled}
+            placeholder={def.placeholder ?? 'اختر التاريخ'}
+          />
         ) : (
           <div className="relative">
             <Input

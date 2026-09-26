@@ -17,6 +17,7 @@ import { ProfileView } from '@/components/views/profile-view'
 import { SearchOverlay } from '@/components/views/search-overlay'
 import { AchievementSheet } from '@/components/achievement/achievement-sheet'
 import { ReportPrint } from '@/components/report/report-print'
+import { ReportPreview } from '@/components/report/report-preview'
 import { Icon } from '@/components/shared/icon'
 
 function ViewRouter() {
@@ -96,6 +97,8 @@ function AppInner() {
       </div>
       <AchievementSheet />
       <SearchOverlay open={searchOpen} onOpenChange={setSearchOpen} />
+      {/* معاينة التقرير — طبقة مستقلة فوق التطبيق؛ الإعداد يبقى محمّلاً بحالته */}
+      <ReportPreview />
       <div id="print-root">
         <ReportPrint />
       </div>

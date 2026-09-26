@@ -36,7 +36,7 @@ export async function PUT(req: NextRequest) {
   // تحديث جزئي آمن: يُحدَّث فقط ما ورد في الطلب — لا يُمسّ ما لم يُرسل
   const data: Record<string, unknown> = {}
   if ('name' in body) data.name = body.name?.trim() || me.name
-  for (const f of ['school', 'subject', 'qualification', 'stage', 'classes', 'licenseNumber', 'duties', 'photoUrl']) {
+  for (const f of ['school', 'subject', 'qualification', 'stage', 'classes', 'licenseNumber', 'duties', 'photoUrl', 'educationAdmin', 'educationOffice', 'principalName']) {
     if (f in body) data[f] = body[f] === '' ? null : body[f]
   }
   for (const f of ['experienceYears', 'weeklyLoad']) {

@@ -18,6 +18,10 @@ export interface TUser {
   schedule?: string | null
   committees?: string | null
   extraDuties?: string | null
+  // بيانات جهة العمل — ترويسة التقرير الرسمي
+  educationAdmin?: string | null
+  educationOffice?: string | null
+  principalName?: string | null
 }
 
 export interface TYear {

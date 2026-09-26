@@ -13,7 +13,7 @@
  * سطح المكتب: Dialog صغيرة أنيقة — الجوال: Bottom Sheet (dialog-sheet).
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
@@ -62,19 +62,22 @@ export function HijriDateField({ value, onChange, disabled, placeholder = 'اخ�
         <Icon name="CalendarDays" className="size-4 shrink-0 text-primary" strokeWidth={1.8} />
       </button>
 
-      <HijriDatePickerDialog
-        open={open}
-        onOpenChange={setOpen}
-        value={value}
-        onPick={onChange}
-      />
+      {/* يُركَّب عند الفتح فقط — تُهيَّأ الحالة من القيمة المحفوظة أو تاريخ اليوم */}
+      {open && (
+        <HijriDatePickerDialog
+          open={open}
+          onOpenChange={(v) => { if (!v) setOpen(false) }}
+          value={value}
+          onPick={onChange}
+        />
+      )}
     </>
   )
 }
 
 /* ─────────────────────────── النافذة ─────────────────────────── */
 
-export function HijriDatePickerDialog({
+function HijriDatePickerDialog({
   open, onOpenChange, value, onPick,
 }: {
   open: boolean
@@ -83,57 +86,37 @@ export function HijriDatePickerDialog({
   onPick: (iso: string) => void
 }) {
   // الحالة الابتدائية: القيمة المحفوظة إن وجدت، وإلا تاريخ اليوم الهجري
-  const [day, setDay] = useState(1)
-  const [month, setMonth] = useState(1)
-  const [year, setYear] = useState(1448)
-  const [initialized, setInitialized] = useState(false)
-
-  useEffect(() => {
-    if (!open) return
+  const [{ day, month, year }] = useState(() => {
     const base = (value && storedToHijri(value)) || hijriToday()
-    setDay(base.day)
-    setMonth(base.month)
-    setYear(base.year)
-    setInitialized(true)
-  }, [open, value])
+    return { day: base.day, month: base.month, year: base.year }
+  })
+  const [sel, setSel] = useState({ day, month, year })
 
-  const monthLen = useMemo(() => (initialized ? hijriMonthLength(year, month) : 30), [year, month, initialized])
+  const monthLen = useMemo(() => hijriMonthLength(sel.year, sel.month), [sel.year, sel.month])
+  const days = useMemo(() => Array.from({ length: monthLen }, (_, i) => i + 1), [monthLen])
+  const years = useMemo(() => hijriYearOptions(sel.year), [sel.year])
 
-  // عدد الأيام يتبدل تلقائيًا مع الشهر/السنة — ويُقصّ اليوم إن تجاوز الطول الجديد
-  useEffect(() => {
-    if (!initialized) return
-    if (day > monthLen) setDay(monthLen)
-  }, [monthLen, day, initialized])
+  const valid = isValidHijri(sel.year, sel.month, sel.day)
+  const preview = `${sel.day} ${HIJRI_MONTHS[sel.month - 1]} ${sel.year} هـ`
 
-  const days = useMemo(
-    () => Array.from({ length: monthLen }, (_, i) => i + 1),
-    [monthLen],
-  )
-  const years = useMemo(() => hijriYearOptions(year), [year])
-  const valid = isValidHijri(year, month, day)
-  const preview = `${day} ${HIJRI_MONTHS[month - 1]} ${year} هـ`
-
+  // تغيير الشهر/السنة يقصّ اليوم تلقائيًا إلى طول الشهر الجديد (أم القرى)
   const handleMonth = (m: string) => {
     const nm = Number(m)
-    setMonth(nm)
-    const len = hijriMonthLength(year, nm)
-    if (day > len) setDay(len)
+    setSel((s) => ({ ...s, month: nm, day: Math.min(s.day, hijriMonthLength(s.year, nm)) }))
   }
   const handleYear = (y: string) => {
     const ny = Number(y)
-    setYear(ny)
-    const len = hijriMonthLength(ny, month)
-    if (day > len) setDay(len)
+    setSel((s) => ({ ...s, year: ny, day: Math.min(s.day, hijriMonthLength(ny, s.month)) }))
   }
 
   const confirm = () => {
-    const iso = hijriToISOInput(year, month, day)
+    const iso = hijriToISOInput(sel.year, sel.month, sel.day)
     if (!iso) return
     onPick(iso)
     onOpenChange(false)
   }
 
-  const sel = 'h-11 w-full rounded-xl border border-input bg-card text-sm font-medium shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&>span]:text-right [&>span]:font-semibold'
+  const selCls = 'h-11 w-full rounded-xl border border-input bg-card text-sm font-medium shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&>span]:text-right [&>span]:font-semibold'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,8 +136,8 @@ export function HijriDatePickerDialog({
           <div className="mt-5 grid grid-cols-3 gap-2.5 sm:gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">اليوم</label>
-              <Select dir="rtl" value={String(day)} onValueChange={(v) => setDay(Number(v))}>
-                <SelectTrigger dir="rtl" className={sel}><SelectValue /></SelectTrigger>
+              <Select dir="rtl" value={String(sel.day)} onValueChange={(v) => setSel((s) => ({ ...s, day: Number(v) }))}>
+                <SelectTrigger dir="rtl" className={selCls}><SelectValue /></SelectTrigger>
                 <SelectContent dir="rtl" className="max-h-64">
                   {days.map((d) => (
                     <SelectItem key={d} value={String(d)} className="h-10 text-sm font-semibold">{d}</SelectItem>
@@ -164,8 +147,8 @@ export function HijriDatePickerDialog({
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">الشهر</label>
-              <Select dir="rtl" value={String(month)} onValueChange={handleMonth}>
-                <SelectTrigger dir="rtl" className={sel}><SelectValue /></SelectTrigger>
+              <Select dir="rtl" value={String(sel.month)} onValueChange={handleMonth}>
+                <SelectTrigger dir="rtl" className={selCls}><SelectValue /></SelectTrigger>
                 <SelectContent dir="rtl" className="max-h-64">
                   {HIJRI_MONTHS.map((m, i) => (
                     <SelectItem key={m} value={String(i + 1)} className="h-10 text-sm font-semibold">{m}</SelectItem>
@@ -175,8 +158,8 @@ export function HijriDatePickerDialog({
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">السنة</label>
-              <Select dir="rtl" value={String(year)} onValueChange={handleYear}>
-                <SelectTrigger dir="rtl" className={sel}><SelectValue /></SelectTrigger>
+              <Select dir="rtl" value={String(sel.year)} onValueChange={handleYear}>
+                <SelectTrigger dir="rtl" className={selCls}><SelectValue /></SelectTrigger>
                 <SelectContent dir="rtl" className="max-h-64">
                   {years.map((y) => (
                     <SelectItem key={y} value={String(y)} className="h-10 text-sm font-semibold">{y}</SelectItem>
