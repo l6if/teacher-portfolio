@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9d7d3"/><stop offset="1" stop-color="#e8efed"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e7f6e"/><stop offset="1" stop-color="#12907c"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="620" fill="#ffffff" rx="0"/>
+  <text x="450" y="70" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="30" font-weight="700" fill="#1f2d2a">أثر الخطة العلاجية في مهارة القراءة — الصف السابع</text>
+  <text x="450" y="105" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="18" fill="#6b7a76">نسبة إتقان الطلاب المستهدفين (ن = 18)</text>
+  <line x1="120" y1="140" x2="120" y2="520" stroke="#d7e0dd" stroke-width="2"/>
+  <line x1="120" y1="520" x2="820" y2="520" stroke="#d7e0dd" stroke-width="2"/>
+  <g font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="15" fill="#6b7a76" text-anchor="end">
+    <text x="108" y="525">0%</text><text x="108" y="440">25%</text><text x="108" y="355">50%</text><text x="108" y="270">75%</text><text x="108" y="185">100%</text>
+  </g>
+  <g stroke="#e4ebe9" stroke-dasharray="5 6"><line x1="120" y1="440" x2="820" y2="440"/><line x1="120" y1="355" x2="820" y2="355"/><line x1="120" y1="270" x2="820" y2="270"/><line x1="120" y1="185" x2="820" y2="185"/></g>
+  <line x1="120" y1="196" x2="820" y2="196" stroke="#c9a227" stroke-width="2.5" stroke-dasharray="10 7"/>
+  <text x="812" y="185" text-anchor="end" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="16" fill="#c9a227">المستهدف 85%</text>
+  <g>
+    <rect x="210" y="270" width="170" height="250" rx="10" fill="url(#g1)"/>
+    <text x="295" y="248" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="34" font-weight="700" fill="#6b7a76">58%</text>
+    <text x="295" y="555" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="20" fill="#1f2d2a">القياس القبلي</text>
+  </g>
+  <g>
+    <rect x="520" y="185" width="170" height="335" rx="10" fill="url(#g2)"/>
+    <text x="605" y="163" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="34" font-weight="700" fill="#0a5d51">83%</text>
+    <text x="605" y="555" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="20" fill="#1f2d2a">القياس البعدي</text>
+  </g>
+  <g transform="translate(413,320)">
+    <path d="M0,-14 L14,0 L0,14 L-14,0 Z" fill="#0e7f6e"/>
+    <text x="0" y="38" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="22" font-weight="700" fill="#0a5d51">+25</text>
+  </g>
+  <text x="450" y="600" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="16" fill="#6b7a76">مدة التنفيذ: 4 أسابيع — رصد أسبوعي للتقدم</text>
+</svg>

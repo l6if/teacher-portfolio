@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0f7f5"/><stop offset="1" stop-color="#e3efec"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="620" fill="url(#sky)"/>
+  <circle cx="80" cy="80" r="120" fill="#d3e8e2" opacity=".55"/>
+  <circle cx="840" cy="540" r="150" fill="#d3e8e2" opacity=".4"/>
+  
+  <g transform="translate(450,250)">
+    <rect x="-160" y="70" width="70" height="26" rx="6" fill="#b8d8d0"/>
+    <rect x="-140" y="96" width="70" height="26" rx="6" fill="#a5cfc5"/>
+    <rect x="-120" y="122" width="70" height="26" rx="6" fill="#8fc2b6"/>
+    <rect x="-100" y="148" width="70" height="26" rx="6" fill="#7ab3a6"/>
+    <g transform="rotate(-8)">
+      <path d="M-20,95 L-20,20 Q45,-8 110,20 L110,95 Z" fill="#0e7f6e"/>
+      <path d="M20,95 L20,20 Q45,6 70,20 L70,95 Z" fill="#ffffff" opacity=".28"/>
+      <line x1="45" y1="14" x2="45" y2="95" stroke="#ffffff" stroke-width="3" opacity=".5"/>
+    </g>
+    <g transform="rotate(9) translate(120,0)">
+      <path d="M-20,95 L-20,20 Q45,-8 110,20 L110,95 Z" fill="#12907c"/>
+      <line x1="45" y1="14" x2="45" y2="95" stroke="#ffffff" stroke-width="3" opacity=".5"/>
+    </g>
+    <g fill="#c9a227">
+      <circle cx="-190" cy="-10" r="7"/><circle cx="-210" cy="30" r="5"/>
+      <circle cx="205" cy="-30" r="7"/><circle cx="230" cy="12" r="5"/>
+      <path d="M-60,-60 l4,10 10,4 -10,4 -4,10 -4,-10 -10,-4 10,-4 Z"/>
+      <path d="M150,-70 l3,8 8,3 -8,3 -3,8 -3,-8 -8,-3 8,-3 Z"/>
+    </g>
+  </g>
+  <g transform="translate(180,320) scale(1)">
+    <circle cx="0" cy="-14" r="15" fill="#3c5750"/>
+    <rect x="-19" y="4" width="38" height="34" rx="13" fill="#3c5750" opacity=".82"/>
+  </g>
+  <g transform="translate(700,300) scale(1)">
+    <circle cx="0" cy="-14" r="15" fill="#946b4a"/>
+    <rect x="-19" y="4" width="38" height="34" rx="13" fill="#946b4a" opacity=".82"/>
+  </g>
+  <g transform="translate(240,420) scale(0.8)">
+    <circle cx="0" cy="-14" r="15" fill="#946b4a"/>
+    <rect x="-19" y="4" width="38" height="34" rx="13" fill="#946b4a" opacity=".82"/>
+  </g>
+  <g transform="translate(660,420) scale(0.8)">
+    <circle cx="0" cy="-14" r="15" fill="#3c5750"/>
+    <rect x="-19" y="4" width="38" height="34" rx="13" fill="#3c5750" opacity=".82"/>
+  </g>
+
+  <rect x="0" y="500" width="900" height="120" fill="#ffffff" opacity=".94"/>
+  <text x="450" y="556" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="24" font-weight="700" fill="#1f2d2a">مبادرة القراءة الواعية</text>
+  <text x="450" y="590" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="16" fill="#6b7a76">أسبوع القراءة — متوسطة الملك عبدالعزيز — سبتمبر 2026</text>
+</svg>

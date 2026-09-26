@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="707" viewBox="0 0 1000 707">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdfcf7"/><stop offset="1" stop-color="#f6f3ea"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d9b64a"/><stop offset=".5" stop-color="#c9a227"/><stop offset="1" stop-color="#a8851c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="707" fill="url(#bg)"/>
+  <rect x="26" y="26" width="948" height="655" fill="none" stroke="#0e7f6e" stroke-width="3.5" rx="6"/>
+  <rect x="40" y="40" width="920" height="627" fill="none" stroke="url(#gold)" stroke-width="1.6" rx="4"/>
+  <rect x="40" y="40" width="920" height="96" fill="#e3f2ef" rx="4"/>
+  <text x="500" y="102" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="40" font-weight="700" fill="#0a5d51">المملكة العربية السعودية — وزارة التعليم</text>
+  <text x="500" y="205" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="52" font-weight="700" fill="#1f2d2a">شهادة إتمام دورة تدريبية</text>
+  <text x="500" y="255" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="26" fill="#6b7a76">التقويم التكويني الرقمي — 12 ساعة تدريبية</text>
+  <line x1="330" y1="285" x2="670" y2="285" stroke="url(#gold)" stroke-width="2.5"/>
+  <text x="500" y="345" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="30" fill="#1f2d2a">تُمنح هذه الشهادة إلى</text>
+  <text x="500" y="410" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="46" font-weight="700" fill="#0a5d51">الأستاذ / سلطان بن حمد الحربي</text>
+  <text x="500" y="470" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="24" fill="#6b7a76">لاكتسابه المهارات المعلنة في وصف الدورة التدريبية بمستوى إتقان مرتفع</text>
+  <g transform="translate(780,560)">
+    <circle r="58" fill="none" stroke="url(#gold)" stroke-width="3"/>
+    <circle r="48" fill="none" stroke="#0e7f6e" stroke-width="1.5"/>
+    <path d="M0,-30 L8,-8 L32,-8 L12,6 L20,30 L0,16 L-20,30 L-12,6 L-32,-8 L-8,-8 Z" fill="#c9a227" opacity=".85"/>
+    <text y="52" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="11" fill="#6b7a76">ختم الاعتماد</text>
+  </g>
+  <g>
+    <line x1="120" y1="600" x2="330" y2="600" stroke="#6b7a76" stroke-width="1.5"/>
+    <text x="225" y="628" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="19" fill="#6b7a76">الأكاديمية المهنية للمعلمين</text>
+    <line x1="670" y1="600" x2="880" y2="600" stroke="#6b7a76" stroke-width="1.5"/>
+    <text x="775" y="628" text-anchor="middle" font-family="Tahoma, 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="19" fill="#6b7a76">مدرب الدورة / د. سعد المطيري</text>
+  </g>
+</svg>
