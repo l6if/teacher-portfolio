@@ -4,7 +4,11 @@ export interface TUser {
   id: string
   name: string
   email: string
-  role: 'TEACHER' | 'MANAGER'
+  role: 'TEACHER' | 'MANAGER' | 'SUPER_ADMIN'
+  status?: 'ACTIVE' | 'SUSPENDED'
+  gender?: 'MALE' | 'FEMALE' | null
+  isDemo?: boolean
+  lastLoginAt?: string | null
   school?: string | null
   subject?: string | null
   qualification?: string | null

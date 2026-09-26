@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useApp } from '@/store/app-store'
 import { useSession } from '@/hooks/use-data'
 import { LoginScreen } from './login-screen'
+import { SignupScreen, ForgotPasswordScreen } from './auth-screens'
 import { AppShell } from './app-shell'
 import { DashboardView } from '@/components/views/dashboard-view'
 import { PortfolioView } from '@/components/views/portfolio-view'
@@ -19,6 +20,26 @@ import { AchievementSheet } from '@/components/achievement/achievement-sheet'
 import { ReportPrint } from '@/components/report/report-print'
 import { ReportPreview } from '@/components/report/report-preview'
 import { Icon } from '@/components/shared/icon'
+
+/** شاشات ما قبل الدخول: دخول / إنشاء حساب / استعادة كلمة المرور */
+type AuthView = 'login' | 'signup' | 'forgot'
+
+function AuthFlow() {
+  const [authView, setAuthView] = useState<AuthView>('login')
+  switch (authView) {
+    case 'signup':
+      return <SignupScreen onSwitchToLogin={() => setAuthView('login')} />
+    case 'forgot':
+      return <ForgotPasswordScreen onSwitchToLogin={() => setAuthView('login')} />
+    default:
+      return (
+        <LoginScreen
+          onSwitchToSignup={() => setAuthView('signup')}
+          onSwitchToForgot={() => setAuthView('forgot')}
+        />
+      )
+  }
+}
 
 function ViewRouter() {
   const view = useApp((s) => s.view)
@@ -60,6 +81,13 @@ function AppInner() {
     }
   }, [session, viewUserId, view, navigate])
 
+  // بعد التسجيل الجديد: توجيه مباشر إلى «إكمال الملف المهني» (الاسم/الجنس لم يُكتملا بعد)
+  const needsProfileCompletion =
+    Boolean(session?.user) && (session!.user!.name === 'مستخدم جديد' || !session!.user!.gender)
+  useEffect(() => {
+    if (needsProfileCompletion && view !== 'profile') navigate('profile')
+  }, [needsProfileCompletion, view, navigate])
+
   // اختصار لوحة المفاتيح للبحث
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -86,7 +114,7 @@ function AppInner() {
       </div>
     )
   }
-  if (!session?.user) return <LoginScreen />
+  if (!session?.user) return <AuthFlow />
 
   return (
     <>

@@ -14,6 +14,7 @@ import {
 } from './report-parts'
 import { OfficialReport } from './official-report'
 import { ReportImageProvider } from './report-image-context'
+import { getGenderedLabels } from '@/lib/gender'
 import type { PrintConfig } from '@/store/app-store'
 import type { ReportData } from '@/hooks/use-data'
 
@@ -94,7 +95,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
     return (
       <div dir="rtl" style={rootStyle}>
         {footer}
-        <Cover name={user.name} school={user.school} subject={user.subject} year={year.label} completion={completion.overall} date={dateStr} />
+        <Cover name={user.name} school={user.school} subject={user.subject} year={year.label} completion={completion.overall} date={dateStr} gender={user.gender} />
         <Toc items={tocItems} />
 
         {includedSections.map((s, i) => {
@@ -242,7 +243,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
         <div className="print-page" style={{ paddingTop: S.s4 }}>
           <ReportHeader
             title="ملخص ملف الإنجاز"
-            subtitle={`${user.name} — ${user.subject ? `معلم ${user.subject} — ` : ''}${user.school ?? ''} — ${year.label}`}
+            subtitle={`${user.name} — ${user.subject ? `${getGenderedLabels(user.gender).teacher} ${user.subject} — ` : ''}${user.school ?? ''} — ${year.label}`}
             metrics={[
               { value: `${formatNumber(completion.overall)}%`, label: 'اكتمال الملف' },
               { value: formatNumber(completion.counts.achievements), label: 'إنجازًا' },
@@ -262,7 +263,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
         <div className="print-page" style={{ paddingTop: S.s4 }}>
           <ReportHeader
             title="تقرير الأثر المهني"
-            subtitle={`${user.name} — ${user.subject ? `معلم ${user.subject} — ` : ''}${year.label} — أثر الممارسات مقيسًا بالقياس القبلي والبعدي`}
+            subtitle={`${user.name} — ${user.subject ? `${getGenderedLabels(user.gender).teacher} ${user.subject} — ` : ''}${year.label} — أثر الممارسات مقيسًا بالقياس القبلي والبعدي`}
             metrics={[
               { value: String(scored.length), label: 'قياسات موثقة' },
               { value: completion.counts.avgImprovement !== null ? `+${completion.counts.avgImprovement}%` : '—', label: 'متوسط التحسن' },

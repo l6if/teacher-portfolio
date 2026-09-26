@@ -8,6 +8,7 @@ import { formatDate, formatNumber, improvement } from '@/lib/format'
 import { LoadingState, ErrorState } from '@/components/shared/states'
 import { RC, S, RT, RR, REPORT_BRAND, FIELD_LABELS, footerLine } from '@/lib/report-tokens'
 import { useReportImages } from './report-image-context'
+import { getGenderedLabels } from '@/lib/gender'
 import type { TAchievement, TAttachment } from '@/lib/types'
 import type { ReportData } from '@/hooks/use-data'
 
@@ -214,7 +215,8 @@ export function SectionDivider({ num, title, desc, stats }: { num: number; title
 }
 
 /** الغلاف — تخطيط تحريري غير متمركز مع عنصر هندسي بسيط */
-export function Cover({ name, school, subject, year, completion, date }: { name: string; school?: string | null; subject?: string | null; year: string; completion: number; date: string }) {
+export function Cover({ name, school, subject, year, completion, date, gender }: { name: string; school?: string | null; subject?: string | null; year: string; completion: number; date: string; gender?: 'MALE' | 'FEMALE' | null }) {
+  const teacherLabel = getGenderedLabels(gender).teacher
   return (
     <div className="print-page" style={{ display: 'flex', flexDirection: 'column', minHeight: '245mm', paddingTop: S.s4 }}>
       {/* شريط التعريف العلوي */}
@@ -235,7 +237,7 @@ export function Cover({ name, school, subject, year, completion, date }: { name:
 
         <p style={{ margin: 0, fontSize: '21px', fontWeight: 700, color: RC.primaryDeep, lineHeight: 1.5 }}>{name}</p>
         <p style={{ margin: `${S.s2} 0 0`, ...RT.body, color: RC.muted, fontSize: '12px' }}>
-          {subject ? `معلم ${subject}` : 'معلم'}{school ? ` — ${school}` : ''}
+          {subject ? `${teacherLabel} ${subject}` : teacherLabel}{school ? ` — ${school}` : ''}
         </p>
 
         {/* العنصر الهندسي — دوائر متراكزة ونقطة، بلون واحد */}
@@ -267,6 +269,7 @@ export function Cover({ name, school, subject, year, completion, date }: { name:
 /** البطاقة المهنية — صفحة تعريف المعلم بعد الغلاف */
 export function ProfileCard({ user }: { user: ReportData["user"] }) {
   const initials = user.name.split(' ').slice(0, 2).map((w) => w[0]).join(' ')
+  const teacherLabel = getGenderedLabels(user.gender).teacher
   return (
     <div>
       <div className="print-avoid-break" style={{ display: 'flex', alignItems: 'center', gap: S.s4, padding: S.s4, border: `0.8px solid ${RC.line}`, borderRadius: RR.card, background: RC.wash, pageBreakInside: 'avoid' }}>
@@ -276,7 +279,7 @@ export function ProfileCard({ user }: { user: ReportData["user"] }) {
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2 style={{ margin: 0, ...RT.h2, fontSize: '18px', color: RC.ink }}>{user.name}</h2>
           <p style={{ margin: '1.2mm 0 0', ...RT.body, color: RC.muted, fontSize: '11px' }}>
-            {user.subject ? `معلم ${user.subject}` : 'معلم'}{user.school ? ` — ${user.school}` : ''}{user.stage ? ` — ${user.stage}` : ''}
+            {user.subject ? `${teacherLabel} ${user.subject}` : teacherLabel}{user.school ? ` — ${user.school}` : ''}{user.stage ? ` — ${user.stage}` : ''}
           </p>
         </div>
       </div>

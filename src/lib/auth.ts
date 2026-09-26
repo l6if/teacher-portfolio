@@ -1,10 +1,12 @@
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
 
 /**
  * المصادقة الحقيقية:
  * - كلمات المرور: scrypt مع ملح عشوائي لكل مستخدم (بدون مكتبات خارجية).
- * - الجلسة: توكن موقّع HMAC-SHA256 يحمل (userId + تاريخ الانتهاء) —
+ * - الجلسة: توكن موقّع HMAC-SHA256 يحمل (userId + epoch + تاريخ الانتهاء) —
  *   لا يمكن تزويره ولا انتحال مستخدم آخر بتغيير الكوكي يدويًا.
+ * - epoch: يُرفع عند تغيير كلمة المرور فيُبطل كل الجلسات القديمة فورًا.
+ * - استعادة كلمة المرور: توكن عشوائي 256-بت يُخزّن هاشه فقط، استخدام واحد، صلاحية محدودة.
  */
 
 const SECRET = process.env.SESSION_SECRET
@@ -40,7 +42,7 @@ export function verifyPassword(password: string, stored: string | null): boolean
   return timingSafeEqual(candidate, expected)
 }
 
-// ─── توكن الجلسة: userId.expiry.signature ─────────────────────
+// ─── توكن الجلسة: userId.epoch.expiry.signature ───────────────
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 يومًا — مطابق لعمر الكوكي
 
@@ -48,26 +50,58 @@ function sign(payload: string): string {
   return createHmac('sha256', getSecret()).update(payload).digest('base64url')
 }
 
-export function createSessionToken(userId: string): string {
+export function createSessionToken(userId: string, epoch: number = 0): string {
   const exp = Date.now() + SESSION_TTL_MS
-  const payload = `${userId}.${exp}`
+  const payload = `${userId}.${epoch}.${exp}`
   return `${payload}.${sign(payload)}`
 }
 
-/** يتحقق من التوقيع وانتهاء الصلاحية ويعيد userId أو null */
-export function verifySessionToken(token: string | undefined | null): string | null {
+/** يتحقق من التوقيع وانتهاء الصلاحية ويطابق epoch — يعيد userId أو null */
+export function verifySessionToken(token: string | undefined | null, currentEpoch: number = 0): string | null {
+  const parsed = parseSessionToken(token)
+  if (!parsed) return null
+  // إبطال الجلسات القديمة بعد تغيير كلمة المرور (رفع epoch)
+  if (parsed.epoch !== currentEpoch) return null
+  return parsed.userId
+}
+
+/** تحليل التوكن (توقيع + صلاحية) دون مقارنة epoch — يعيد userId وepoch معًا */
+export function parseSessionToken(
+  token: string | undefined | null,
+): { userId: string; epoch: number } | null {
   if (!token) return null
   const parts = token.split('.')
-  if (parts.length !== 3) return null
-  const [userId, exp, sig] = parts
-  const payload = `${userId}.${exp}`
+  if (parts.length !== 4) return null
+  const [userId, epoch, exp, sig] = parts
+  const payload = `${userId}.${epoch}.${exp}`
   const expected = sign(payload)
   // مقارنة ثابتة الزمن
   const a = Buffer.from(sig)
   const b = Buffer.from(expected)
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null
   if (!/^\d+$/.test(exp) || Number(exp) < Date.now()) return null
-  return userId
+  if (!/^\d+$/.test(epoch)) return null
+  return { userId, epoch: Number(epoch) }
 }
 
 export const SESSION_MAX_AGE = SESSION_TTL_MS / 1000
+
+// ─── توكن استعادة كلمة المرور ────────────────────────────────
+
+/** صلاحية توكن الاستعادة: 45 دقيقة */
+export const RESET_TOKEN_TTL_MS = 45 * 60 * 1000
+
+/**
+ * يولّد توكن استعادة خامًا (يُرسل للمستخدم مرة واحدة عبر البريد)
+ * مع هاشه sha256 (الذي يُخزّن وحده في قاعدة البيانات).
+ */
+export function createResetToken(): { raw: string; tokenHash: string; expiresAt: Date } {
+  const raw = randomBytes(32).toString('base64url')
+  const tokenHash = hashResetToken(raw)
+  return { raw, tokenHash, expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) }
+}
+
+/** هاش التوكن — الخام لا يُخزّن أبدًا */
+export function hashResetToken(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex')
+}

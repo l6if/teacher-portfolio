@@ -8,6 +8,7 @@ import { EmptyState, LoadingState, ErrorState } from '@/components/shared/states
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { AiAssistButton } from '@/components/shared/ai-assist'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
@@ -60,11 +61,27 @@ function PlanDialog({ open, onOpenChange, plan }: { open: boolean; onOpenChange:
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">الهدف التطويري</label>
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <label className="text-sm font-medium">الهدف التطويري</label>
+              <AiAssistButton
+                action="suggestGeneralObjective"
+                label="اقتراح هدف"
+                context={{ title: form.goal || undefined, achievementType: 'DEVPLAN' }}
+                onApplyText={(v) => set('goal', v)}
+              />
+            </div>
             <Input dir="rtl" value={form.goal} onChange={(e) => set('goal', e.target.value)} placeholder="مثال: إتقان تحليل بيانات التقويم الرقمي" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">الإجراء</label>
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <label className="text-sm font-medium">الإجراء</label>
+              <AiAssistButton
+                action="suggestExecution"
+                label="اقتراح الإجراء"
+                context={{ title: form.goal || undefined, achievementType: 'DEVPLAN' }}
+                onApplyText={(v) => set('action', v)}
+              />
+            </div>
             <Textarea dir="rtl" rows={2} value={form.action} onChange={(e) => set('action', e.target.value)} placeholder="ماذا ستفعل تحديدًا؟" />
           </div>
           <div className="grid grid-cols-2 gap-3">

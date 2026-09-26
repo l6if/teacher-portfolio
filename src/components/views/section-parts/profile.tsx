@@ -31,7 +31,7 @@ const PROFILE_FIELDS: { key: keyof ProfileForm; label: string; placeholder?: str
 const OFFICIAL_FIELDS: { key: keyof ProfileForm; label: string; placeholder?: string }[] = [
   { key: 'educationAdmin', label: 'الإدارة التعليمية', placeholder: 'مثال: إدارة تعليم الرياض' },
   { key: 'educationOffice', label: 'مكتب التعليم', placeholder: 'مثال: مكتب تعليم شمال الرياض' },
-  { key: 'principalName', label: 'اسم مدير/ة المدرسة', placeholder: 'مثال: أ. نورة العتيبي' },
+  { key: 'principalName', label: 'اسم مدير/ة المدرسة', placeholder: 'اسم المدير/ة كما سيظهر في التوقيع' },
 ]
 
 type UserLike = NonNullable<ReturnType<typeof useSession>['data']>['user']
@@ -89,7 +89,11 @@ function ProfileFieldsForm({ user }: { user: UserLike }) {
     stage: user.stage ?? '', classes: user.classes ?? '', licenseNumber: user.licenseNumber ?? '', duties: user.duties ?? '',
     educationAdmin: user.educationAdmin ?? '', educationOffice: user.educationOffice ?? '', principalName: user.principalName ?? '',
   }))
-  const auto = useAutoSave('/api/profile', 'PUT', () => form, true)
+  // الجنس — يُحفظ مع بقية الحقول تلقائيًا ويحرّك الصياغة العربية في كل التطبيق والتقارير
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | ''>(
+    user.gender === 'MALE' || user.gender === 'FEMALE' ? user.gender : '',
+  )
+  const auto = useAutoSave('/api/profile', 'PUT', () => ({ ...form, gender: gender || undefined }), true)
 
   const set = (key: keyof ProfileForm, value: string) => {
     const next = { ...form, [key]: value }
@@ -97,10 +101,32 @@ function ProfileFieldsForm({ user }: { user: UserLike }) {
     auto.trigger()
   }
 
+  const chooseGender = (value: 'MALE' | 'FEMALE') => {
+    setGender(value)
+    auto.trigger()
+  }
+
   const filled = PROFILE_FIELDS.filter((f) => form[f.key]?.trim()).length
+
+  // لافتة إكمال الملف المهني — تظهر للمستخدم الجديد حتى يُكمل اسمه وجنسه
+  const incompleteProfile = form.name === 'مستخدم جديد' || !gender
 
   return (
     <div className="space-y-4">
+      {incompleteProfile && (
+        <div className="flex items-start gap-3 rounded-3xl border border-primary/30 bg-primary/6 p-4 anim-fade-up" role="status">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+            <Icon name="Sparkles" className="size-5" strokeWidth={1.8} />
+          </span>
+          <div>
+            <h4 className="text-sm font-bold text-foreground">أكمل ملفك المهني</h4>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">
+              ابدأ باسمك الكامل وجنسك — تُستخدم الصياغة العربية المناسبة تلقائيًا في كل التطبيق والتقارير الرسمية، ثم أكمل بقية الحقول لتوثيق مسيرتك المهنية.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border bg-gradient-to-l from-secondary/70 to-card p-5 anim-fade-up">
         <div className="flex items-center gap-4">
           <div className="flex size-14 items-center justify-center rounded-full bg-primary/12 text-xl font-bold text-primary">
@@ -114,6 +140,33 @@ function ProfileFieldsForm({ user }: { user: UserLike }) {
           </div>
         </div>
         <SaveIndicator state={auto.state} />
+      </div>
+
+      <div className="space-y-1.5">
+        <span className="block text-sm font-medium text-foreground">الجنس</span>
+        <div className="grid grid-cols-2 gap-2 sm:max-w-xs" role="radiogroup" aria-label="الجنس">
+          {([
+            { value: 'MALE', label: 'ذكر' },
+            { value: 'FEMALE', label: 'أنثى' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={gender === opt.value}
+              onClick={() => chooseGender(opt.value)}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                gender === opt.value
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card text-foreground hover:border-primary/40'
+              }`}
+            >
+              <Icon name="CheckCircle2" className={`size-4 transition-opacity ${gender === opt.value ? 'opacity-100' : 'opacity-0'}`} />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">يضبط الصياغة العربية (معلم/معلمة) في الواجهة والتقارير والتوقيعات.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

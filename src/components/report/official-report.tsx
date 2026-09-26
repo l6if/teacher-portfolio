@@ -22,6 +22,7 @@ import { Rule, Gallery, BeforeAfter, DocChip } from './report-parts'
 import { useReportImages } from './report-image-context'
 import type { TAchievement, TAttachment } from '@/lib/types'
 import type { ReportData } from '@/hooks/use-data'
+import { getGenderedLabels } from '@/lib/gender'
 
 /* ─── عنوان التقرير حسب نوع الإنجاز ─────────────────────────── */
 
@@ -136,7 +137,8 @@ function OfficialHeader({ user, year, title, dateText }: {
         <p style={{ margin: 0, ...RT.caption, color: RC.primaryDeep, letterSpacing: '0.16em' }}>تقرير تنفيذ رسمي</p>
         <h1 style={{ margin: `${S.s2} 0 0`, ...RT.h1, color: RC.ink, fontSize: '23px' }}>{title}</h1>
         <p style={{ margin: `${S.s2} 0 0`, ...RT.caption, color: RC.muted }}>
-          {user.subject ? `معلم ${user.subject}` : 'معلم'}: <span style={{ color: RC.inkSoft, fontWeight: 700 }}>{user.name}</span>
+          {user.subject ? `${getGenderedLabels(user.gender).teacher} ${user.subject}` : getGenderedLabels(user.gender).teacher}:{' '}
+          <span style={{ color: RC.inkSoft, fontWeight: 700 }}>{user.name}</span>
           <span> • </span>
           العام الدراسي {year}
           <span> • </span>
@@ -157,7 +159,7 @@ function InfoGrid({ a, user }: { a: TAchievement; user: ReportData['user'] }) {
   if (a.title) rows.push({ label: 'اسم الإنجاز / البرنامج', value: a.title })
   if (a.field) rows.push({ label: 'المجال / المسار', value: a.field })
   if (a.date) rows.push({ label: 'التاريخ', value: formatDate(a.date) })
-  rows.push({ label: 'مسؤول التنفيذ', value: user.name })
+  rows.push({ label: getGenderedLabels(user.gender).executorTitle, value: user.name })
   const audience = a.beneficiaries ?? (a.studentsCount ? `${formatNumber(a.studentsCount)} طالبًا` : undefined)
   if (audience) rows.push({ label: 'الفئة المستهدفة', value: audience })
   const benCount = a.beneficiariesCount ?? a.studentsCount
@@ -303,19 +305,20 @@ function AttachmentsSection({ files }: { files: TAttachment[] }) {
 /* ─── التوقيعات ───────────────────────────────────────────── */
 
 function Signatures({ user }: { user: ReportData['user'] }) {
+  const labels = getGenderedLabels(user.gender)
   return (
     <div className="print-avoid-break" style={{ marginTop: S.s8, pageBreakInside: 'avoid' }}>
       <Rule color={RC.lineStrong} weight="0.8px" />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.s6, marginTop: S.s4 }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ margin: 0, ...RT.metricLabel, color: RC.muted }}>معلم/ة المادة</p>
+          <p style={{ margin: 0, ...RT.metricLabel, color: RC.muted }}>{labels.teacher} المادة</p>
           <p style={{ margin: '1.5mm 0 0', ...RT.bodyStrong, color: RC.ink }}>{user.name}</p>
           <div style={{ marginTop: '9mm', borderTop: `0.7px solid ${RC.lineStrong}`, paddingTop: '1.2mm' }}>
-            <p style={{ margin: 0, ...RT.caption, color: RC.muted }}>التوقيع</p>
+            <p style={{ margin: 0, ...RT.caption, color: RC.muted }}>{labels.teacherSignature}</p>
           </div>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ margin: 0, ...RT.metricLabel, color: RC.muted }}>مدير/ة المدرسة</p>
+          <p style={{ margin: 0, ...RT.metricLabel, color: RC.muted }}>{labels.principal}</p>
           <p style={{ margin: '1.5mm 0 0', ...RT.bodyStrong, color: RC.ink }}>
             {user.principalName ?? <span style={{ color: RC.muted, fontWeight: 400 }}>..............................</span>}
           </p>

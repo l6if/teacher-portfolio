@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/badges'
 import { LoadingState, ErrorState } from '@/components/shared/states'
 import { SECTIONS, SECTION_MAP, SECTION_ACTION, TYPE_MAP, QUICK_ADD } from '@/lib/constants'
 import { relTime, formatDateShort, formatNumber } from '@/lib/format'
+import { getGenderedLabels } from '@/lib/gender'
 
 function greeting() {
   const h = new Date().getHours()
@@ -50,7 +51,7 @@ export function DashboardView() {
       {/* ١ — التحية */}
       <div className="anim-fade-up">
         <h1 className="text-[22px] font-bold tracking-tight text-foreground sm:text-[1.7rem]">
-          {greeting()}، {user.role === 'MANAGER' ? '' : 'أستاذ '}{firstName(user.name)}
+          {greeting()}، {user.role === 'MANAGER' ? '' : `${getGenderedLabels(user.gender).honorific} `}{firstName(user.name)}
         </h1>
         <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
           {completion.overall >= 85

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from './db'
-import { verifySessionToken } from './auth'
+import { parseSessionToken } from './auth'
 
 export const SESSION_COOKIE = 'pf_session'
 
@@ -11,12 +11,16 @@ export const SESSION_COOKIE = 'pf_session'
 // الطبقة الثانية: toSafeUser DTO يُطبَّق عند كل تسلسل JSON (دفاع في العمق —
 // يحمي حتى لو استعاد مسارٌ ما المستخدم باستعلام خام خاص به).
 
-/** حقول آمنة للتسلسل — كل حقول User عدا passwordHash */
+/** حقول آمنة للتسلسل — كل حقول User عدا passwordHash وsessionEpoch */
 export const SAFE_USER_SELECT = {
   id: true,
   email: true,
   name: true,
   role: true,
+  status: true,
+  gender: true,
+  lastLoginAt: true,
+  isDemo: true,
   school: true,
   subject: true,
   qualification: true,
@@ -48,7 +52,7 @@ export function toSafeUser<T extends object>(user: T): Omit<T, 'passwordHash'> {
 // الحقول الداخلية التي لا تغادر الخادم أبدًا مهما تعمّق التسلسل:
 //   • passwordHash — بيانات اعتماد المستخدم
 //   • storagePath — مسار التخزين الداخلي للملف (بنية school/user/year/...)
-const INTERNAL_KEYS = new Set(['passwordHash', 'storagePath'])
+const INTERNAL_KEYS = new Set(['passwordHash', 'storagePath', 'sessionEpoch'])
 
 /**
  * ينقي أي شجرة كائنات من الحقول الداخلية — عميقًا (مصفوفات + كائنات متداخلة).
@@ -72,9 +76,20 @@ export async function getCurrentUser() {
   const store = await cookies()
   const token = store.get(SESSION_COOKIE)?.value
   // التوكن موقّع HMAC — لا يمكن انتحال userId آخر بتغيير الكوكي
-  const uid = verifySessionToken(token)
-  if (!uid) return null
-  return db.user.findUnique({ where: { id: uid }, select: SAFE_USER_SELECT })
+  const parsed = parseSessionToken(token)
+  if (!parsed) return null
+  // نجلب الحقول الآمنة + epoch للتحقق من إبطال الجلسات (تغيير كلمة المرور)
+  const user = await db.user.findUnique({
+    where: { id: parsed.userId },
+    select: { ...SAFE_USER_SELECT, sessionEpoch: true },
+  })
+  if (!user) return null
+  // حساب موقوف = جلسة مرفوضة فورًا (الإيقاف يطرد المستخدم الحالي أيضًا)
+  if (user.status === 'SUSPENDED') return null
+  // epoch لا يتطابق = الجلسة أُبطلت بعد تغيير كلمة المرور
+  if (parsed.epoch !== user.sessionEpoch) return null
+  const { sessionEpoch: _internal, ...safe } = user
+  return safe
 }
 
 /**
@@ -103,6 +118,23 @@ export async function resolveTargetUser(req: NextRequest) {
     return { me, target }
   }
   return { me, target: me }
+}
+
+/**
+ * حارس مسؤول المنصة — Server-side حصراً (لا اعتماد على إخفاء عناصر UI).
+ * غير مسجل 401 — مسجل بغير دور SUPER_ADMIN 403.
+ */
+export async function requireSuperAdmin(): Promise<
+  { me: null; res: NextResponse } | { me: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>; res: null }
+> {
+  const me = await getCurrentUser()
+  if (!me) {
+    return { me: null, res: NextResponse.json({ error: 'غير مسجل الدخول' }, { status: 401 }) }
+  }
+  if (me.role !== 'SUPER_ADMIN') {
+    return { me: null, res: NextResponse.json({ error: 'هذه الواجهة لمسؤول المنصة فقط' }, { status: 403 }) }
+  }
+  return { me, res: null }
 }
 
 /** سنة العرض: المحددة في الطلب، وإلا الأحدث غير المؤرشفة، وإلا الأحدث */

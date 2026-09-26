@@ -4,7 +4,14 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Icon } from '@/components/shared/icon'
 
-export function LoginScreen() {
+/** شاشة الدخول: بريد + كلمة مرور فقط — مع روابط الاستعادة وإنشاء الحساب */
+export function LoginScreen({
+  onSwitchToSignup,
+  onSwitchToForgot,
+}: {
+  onSwitchToSignup: () => void
+  onSwitchToForgot: () => void
+}) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -127,10 +134,31 @@ export function LoginScreen() {
               {busy ? <Icon name="Loader2" className="size-4 animate-spin" /> : <Icon name="LogIn" className="size-4" />}
               {busy ? 'جارٍ التحقق…' : 'تسجيل الدخول'}
             </button>
+
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <button
+                type="button"
+                onClick={onSwitchToForgot}
+                className="text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                نسيت كلمة المرور؟
+              </button>
+            </div>
           </div>
         </form>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          ليس لديك حساب؟{' '}
+          <button
+            type="button"
+            onClick={onSwitchToSignup}
+            className="font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            إنشاء حساب
+          </button>
+        </p>
+
+        <p className="mt-3 text-center text-xs text-muted-foreground">
           كل بياناتك محفوظة على خادم المدرسة — لا يشاركها أحد بدون صلاحية.
         </p>
       </div>

@@ -36,6 +36,10 @@ export async function PUT(req: NextRequest) {
   // تحديث جزئي آمن: يُحدَّث فقط ما ورد في الطلب — لا يُمسّ ما لم يُرسل
   const data: Record<string, unknown> = {}
   if ('name' in body) data.name = body.name?.trim() || me.name
+  // الجنس — قيمة معتمدة فقط (يحرّك الصياغة العربية في كل التطبيق والتقارير)
+  if ('gender' in body) {
+    data.gender = body.gender === 'MALE' || body.gender === 'FEMALE' ? body.gender : null
+  }
   for (const f of ['school', 'subject', 'qualification', 'stage', 'classes', 'licenseNumber', 'duties', 'photoUrl', 'educationAdmin', 'educationOffice', 'principalName']) {
     if (f in body) data[f] = body[f] === '' ? null : body[f]
   }

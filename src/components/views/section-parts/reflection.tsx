@@ -6,6 +6,7 @@ import { useReflection, useScope } from '@/hooks/use-data'
 import { Icon } from '@/components/shared/icon'
 import { LoadingState, ErrorState } from '@/components/shared/states'
 import { Textarea } from '@/components/ui/textarea'
+import { AiAssistButton } from '@/components/shared/ai-assist'
 import { toast } from 'sonner'
 
 const QUESTIONS = [
@@ -107,9 +108,19 @@ export function ReflectionSection({ readonly }: { readonly: boolean }) {
                 <Icon name={q.icon} className="size-5" strokeWidth={1.8} />
               </div>
               <div className="min-w-0 flex-1">
-                <label className="block text-sm font-bold leading-6 text-foreground" htmlFor={`refl-${q.key}`}>
-                  {q.label}
-                </label>
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <label className="block text-sm font-bold leading-6 text-foreground" htmlFor={`refl-${q.key}`}>
+                    {q.label}
+                  </label>
+                  {!readonly && (
+                    <AiAssistButton
+                      action="improveText"
+                      label="تحسين"
+                      context={{ text: answers[q.key] || undefined, achievementType: 'REFLECTION' }}
+                      onApplyText={(v) => onChange(q.key, v)}
+                    />
+                  )}
+                </div>
                 <p className="mt-0.5 mb-3 text-[11px] text-muted-foreground">{q.hint}</p>
                 <Textarea
                   id={`refl-${q.key}`}

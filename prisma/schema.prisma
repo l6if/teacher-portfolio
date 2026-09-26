@@ -14,7 +14,17 @@ model User {
   email     String   @unique
   passwordHash String?
   name      String
-  role      String   @default("TEACHER") // TEACHER | MANAGER
+  role      String   @default("TEACHER") // TEACHER | MANAGER | SUPER_ADMIN
+
+  // حالة الحساب — الإيقاف الإداري يمنع الدخول ويُبطل الجلسة القائمة
+  status      String    @default("ACTIVE") // ACTIVE | SUSPENDED
+  // الجنس — صياغة عربية واعية (null = محايد مؤقتًا حتى يختار المستخدم)
+  gender      String? // MALE | FEMALE
+  lastLoginAt DateTime?
+  // نسخة الجلسة — تُرفع عند تغيير كلمة المرور لإبطال كل التوكنات القديمة
+  sessionEpoch Int      @default(0)
+  // حساب المعاينة التجريبي (معزول — لا يرى بيانات حقيقية)
+  isDemo     Boolean   @default(false)
 
   // البيانات المهنية
   school          String?
@@ -47,8 +57,48 @@ model User {
   attachments Attachment[]
   reflections Reflection[]
   devPlans    DevPlan[]
+  resetTokens PasswordResetToken[]
+  aiLogs      AiUsageLog[]
 
   @@index([role])
+  @@index([status])
+  @@index([isDemo])
+}
+
+// ─── توكنات استعادة كلمة المرور ─────────────────────────────
+// يُخزّن هاش التوكن فقط (sha256) — الخام يُرسل للمستخدم عبر البريد مرة واحدة.
+// استخدام واحد + صلاحية محدودة (45 دقيقة افتراضيًا).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─── سجل استخدام الذكاء الاصطناعي ────────────────────────────
+// سجل خفيف بلا محتوى: لا يُخزّن الـ prompt ولا الـ response — خصوصية أولًا.
+model AiUsageLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String // suggestObjectives | improveText | proofread | ...
+  model      String?
+  success    Boolean  @default(true)
+  latencyMs  Int?
+  promptTokens     Int?
+  completionTokens Int?
+  errorKind  String? // timeout | rate_limit | provider_error | invalid_output
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
 }
 
 // ─── السنوات الدراسية ─────────────────────────────────────────

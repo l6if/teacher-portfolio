@@ -14,7 +14,7 @@
 // 10) استجابات المستخدم             → لا passwordHash إطلاقًا
 //
 // ينشئ صفوفًا مؤقتة (معلم بمدرسة أخرى + مرفقان) ثم يمسحها — ويتأكد
-// في النهاية أن الأعداد القياسية عاد كما كانت (5/5/4/40/11/12/1/3).
+// في النهاية أن الأعداد القياسية عادت كما كانت (7/7/6/48/16/18/2/5 — شاملة مسؤول المنصة والديمو).
 
 import { PrismaClient } from '../.pg-client'
 
@@ -165,6 +165,8 @@ async function main() {
     await db.user.delete({ where: { id: tempTeacher.id } })
 
     // ─── التحقق النهائي: الأعداد القياسية ───
+    // الخط الأساسي الجديد (بعد المرحلة النهائية): 5 مستخدمي التطوير الأصليين
+    // + مسؤول المنصة (admin) + المعلم التجريبي المعزول (ديمو ببياناته الغنية)
     const counts = {
       user: await db.user.count(),
       academicYear: await db.academicYear.count(),
@@ -176,11 +178,11 @@ async function main() {
       devPlan: await db.devPlan.count(),
     }
     const expected: Record<string, number> = {
-      user: 5, academicYear: 5, goal: 4, achievement: 40,
-      attachment: 11, evidenceLink: 12, reflection: 1, devPlan: 3,
+      user: 7, academicYear: 7, goal: 6, achievement: 48,
+      attachment: 16, evidenceLink: 18, reflection: 2, devPlan: 5,
     }
     const restored = Object.keys(expected).every((k) => (counts as any)[k] === expected[k])
-    ok('تنظيف: الأعداد القياسية عادت (5/5/4/40/11/12/1/3)', restored,
+    ok('تنظيف: الأعداد القياسية عادت (7/7/6/48/16/18/2/5 = 5 تطوير + مسؤول + ديمو)', restored,
       Object.entries(counts).map(([k, v]) => `${k}:${v}`).join(' '))
     await db.$disconnect()
   }

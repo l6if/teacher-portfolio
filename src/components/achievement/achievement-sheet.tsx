@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useApp } from '@/store/app-store'
-import { useScope, useAchievements } from '@/hooks/use-data'
+import { useScope, useAchievements, useSession } from '@/hooks/use-data'
 import { TYPES, TYPE_MAP, TYPE_FIELDS, STATUS_META, type AchievementType, type AchievementStatus } from '@/lib/constants'
 import { Icon } from '@/components/shared/icon'
+import { AiAssistButton, type AiAssistContext } from '@/components/shared/ai-assist'
 import { AttachmentsEditor } from './attachments-editor'
 import { HijriDateField } from '@/components/shared/hijri-date-picker'
 import { improvement, formatNumber, toDateInput } from '@/lib/format'
@@ -49,42 +50,39 @@ function TypePicker({ onPick }: { onPick: (t: AchievementType) => void }) {
   )
 }
 
-/** زر المساعد الذكي الصغير */
-function AiButton({ mode, text, title, onApply, label }: { mode: string; text: string; title: string; onApply: (v: string) => void; label: string }) {
-  const [busy, setBusy] = useState(false)
-  const run = async () => {
-    if (!text || text.trim().length < 5) {
-      toast.info('اكتب بعض النص أولًا حتى يستطيع المساعد العمل عليه.')
-      return
-    }
-    setBusy(true)
-    try {
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, text, title }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      onApply(data.output)
-      toast.success('تم تطبيق الاقتراح — يمكنك تعديله بحرية')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'تعذر تشغيل المساعد الذكي الآن')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <button
-      type="button"
-      onClick={run}
-      disabled={busy}
-      className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
-    >
-      {busy ? <Icon name="Loader2" className="size-3 animate-spin" /> : <Icon name="Wand2" className="size-3" />}
-      {label}
-    </button>
-  )
+/** سجل إجراءات المساعد لكل حقل — لا تُعرض كل الخيارات في كل حقل */
+const FIELD_AI_ACTIONS: Record<string, { action: string; label: string; needsText?: boolean; needsContext?: boolean }[]> = {
+  title: [{ action: 'improveTitle', label: 'تحسين العنوان', needsText: true }],
+  description: [
+    { action: 'improveText', label: 'تحسين الصياغة', needsText: true },
+    { action: 'expand', label: 'توسيع', needsText: true },
+    { action: 'summarize', label: 'تلخيص', needsText: true },
+  ],
+  goalText: [
+    { action: 'suggestGeneralObjective', label: 'اقتراح الهدف العام', needsContext: true },
+    { action: 'improveText', label: 'تحسين', needsText: true },
+  ],
+  problem: [{ action: 'improveText', label: 'تحسين الصياغة', needsText: true }],
+  execution: [
+    { action: 'suggestExecution', label: 'اقتراح تفاصيل التنفيذ', needsContext: true },
+    { action: 'improveText', label: 'تحسين', needsText: true },
+  ],
+  actions: [
+    { action: 'toBullets', label: 'تحويل إلى نقاط', needsText: true },
+    { action: 'improveText', label: 'تحسين', needsText: true },
+  ],
+  results: [
+    { action: 'toBullets', label: 'تحويل إلى نقاط', needsText: true },
+    { action: 'improveText', label: 'تحسين', needsText: true },
+  ],
+  impact: [
+    { action: 'suggestImpact', label: 'صياغة الأثر', needsText: true },
+    { action: 'improveText', label: 'تحسين', needsText: true },
+  ],
+  notes: [
+    { action: 'proofread', label: 'تدقيق لغوي', needsText: true },
+    { action: 'improveText', label: 'تحسين', needsText: true },
+  ],
 }
 
 export function AchievementSheet() {
@@ -111,6 +109,18 @@ export function AchievementSheet() {
 
   const { data: goalsData } = useAchievements()
   const goals = goalsData?.goals ?? []
+  const { data: sessionData } = useSession()
+
+  /** سياق المساعد الذكي المشترك — من بيانات المستخدم والنموذج الحالي */
+  const aiContext = useCallback((key?: string): AiAssistContext => ({
+    title: form.title || undefined,
+    achievementType: type ?? undefined,
+    subject: sessionData?.user?.subject ?? undefined,
+    stage: sessionData?.user?.stage ?? undefined,
+    problem: form.problem || undefined,
+    goal: goals.find((g) => g.id === goalId)?.title,
+    text: key ? form[key] || undefined : undefined,
+  }), [form.title, form.problem, type, sessionData?.user?.subject, sessionData?.user?.stage, goals, goalId])
 
   // فتح الورقة: إعداد الحالة
   useEffect(() => {
@@ -274,24 +284,33 @@ export function AchievementSheet() {
     const value = form[key] ?? ''
     const common = 'bg-card text-[13px] leading-6'
     const disabled = viewMode && key !== 'status'
+    // إجراءات المساعد لهذا الحقل — Action Registry وليست مبعثرة
+    const aiActions = (FIELD_AI_ACTIONS[key] ?? []).filter((a) => {
+      if (viewMode) return false
+      if (a.needsText && (form[key] ?? '').trim().length < 5) return false
+      if (a.needsContext && !form.title?.trim()) return false
+      return true
+    })
 
     if (def.type === 'textarea') {
       return (
         <div key={key} className={`space-y-1.5 ${def.span === 2 ? 'sm:col-span-2' : ''}`}>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
             <label className="text-sm font-medium text-foreground">
               {def.label}
               {def.optional && <span className="mr-1.5 text-[11px] font-normal text-muted-foreground">(اختياري)</span>}
             </label>
-            {key === 'description' && !viewMode && form.description?.length > 15 && (
-              <AiButton mode="improve" text={form.description} title={form.title} onApply={(v) => setField('description', v)} label="تحسين الصياغة" />
-            )}
-            {key === 'impact' && !viewMode && (form.description?.length > 15 || form.execution?.length > 15) && (
-              <AiButton mode="impact" text={`${form.description ?? ''}\n${form.execution ?? ''}`} title={form.title} onApply={(v) => setField('impact', v)} label="اقتراح أثر" />
-            )}
-            {key === 'description' && !viewMode && form.description?.length > 120 && (
-              <AiButton mode="summarize" text={form.description} title={form.title} onApply={(v) => setField('description', v)} label="تلخيص" />
-            )}
+            <div className="flex flex-wrap items-center gap-1">
+              {aiActions.map((a) => (
+                <AiAssistButton
+                  key={a.action}
+                  action={a.action}
+                  label={a.label}
+                  context={aiContext(key)}
+                  onApplyText={(v) => setField(key, v)}
+                />
+              ))}
+            </div>
           </div>
           <Textarea
             dir="rtl" rows={def.key === 'description' ? 2 : 3}
@@ -332,10 +351,23 @@ export function AchievementSheet() {
 
     return (
       <div key={key} className={`space-y-1.5 ${def.span === 2 ? 'sm:col-span-2' : ''}`}>
-        <label className="text-sm font-medium text-foreground">
-          {def.label}
-          {def.optional && <span className="mr-1.5 text-[11px] font-normal text-muted-foreground">(اختياري)</span>}
-        </label>
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <label className="text-sm font-medium text-foreground">
+            {def.label}
+            {def.optional && <span className="mr-1.5 text-[11px] font-normal text-muted-foreground">(اختياري)</span>}
+          </label>
+          <div className="flex flex-wrap items-center gap-1">
+            {aiActions.map((a) => (
+              <AiAssistButton
+                key={a.action}
+                action={a.action}
+                label={a.label}
+                context={aiContext(key)}
+                onApplyText={(v) => setField(key, v)}
+              />
+            ))}
+          </div>
+        </div>
         {def.type === 'date' ? (
           <HijriDateField
             value={form.date ?? ''}
@@ -433,6 +465,65 @@ export function AchievementSheet() {
 
             {/* المحتوى */}
             <div className="flex-1 space-y-6 px-5 py-5">
+              {/* مولّد المسودة الكاملة — للمبادرات والخطط العلاجية فقط */}
+              {!viewMode && (type === 'INITIATIVE' || type === 'REMEDIAL') && (
+                <div className="rounded-3xl border border-primary/30 bg-primary/6 p-4 anim-fade-up">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                        <Icon name="Sparkles" className="size-5" strokeWidth={1.8} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-bold text-foreground">
+                          {type === 'INITIATIVE' ? 'اقتراح مبادرة كاملة' : 'اقتراح خطة علاجية كاملة'}
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">
+                          مسودة أولية من عنوان ونوع العمل — عدّلها بحرية قبل الحفظ، ولا يُحفظ شيء تلقائيًا.
+                        </p>
+                      </div>
+                    </div>
+                    <AiAssistButton
+                      action={type === 'INITIATIVE' ? 'suggestInitiative' : 'suggestRemedialPlan'}
+                      label={type === 'INITIATIVE' ? '✦ اقتراح مبادرة' : '✦ اقتراح خطة علاجية'}
+                      context={aiContext()}
+                      onApplyDraft={(draft) => {
+                        // تعبئة حقول النموذج من المسودة — الأرقام والقياسات لا تُلمس
+                        const next = { ...form }
+                        const map: Record<string, string> = type === 'INITIATIVE'
+                          ? {
+                              name: 'title', idea: 'description', problem: 'problem', generalGoal: 'goalText',
+                              targetGroup: 'beneficiaries', phases: 'actions', expectedImpact: 'impact',
+                            }
+                          : {
+                              title: 'title', diagnosis: 'problem', skill: 'description', goal: 'goalText',
+                              targetGroup: 'beneficiaries', duration: 'durationText', actions: 'actions',
+                              activities: 'execution', assessmentTools: 'notes',
+                            }
+                        for (const [draftKey, formKey] of Object.entries(map)) {
+                          if (draft[draftKey]?.trim()) next[formKey] = draft[draftKey].trim()
+                        }
+                        // الأهداف التفصيلية تُلحق بالهدف العام
+                        const objectives = draft.objectives?.trim()
+                        if (objectives && type === 'INITIATIVE') {
+                          next.goalText = `${next.goalText ?? ''}\n\nالأهداف التفصيلية:\n- ${objectives.split('\n').join('\n- ')}`.trim()
+                        }
+                        // مؤشرات النجاح والقياس تُلحق بالملاحظات
+                        const extras: string[] = []
+                        if (draft.successIndicators?.trim()) extras.push(`مؤشرات النجاح: ${draft.successIndicators.trim()}`)
+                        if (draft.measurement?.trim()) extras.push(`طرق القياس: ${draft.measurement.trim()}`)
+                        if (draft.resources?.trim()) extras.push(`الموارد المقترحة: ${draft.resources.trim()}`)
+                        if (draft.recommendations?.trim()) extras.push(`توصيات: ${draft.recommendations.trim()}`)
+                        if (draft.postAssessment?.trim()) extras.push(`القياس البعدي المقترح: ${draft.postAssessment.trim()}`)
+                        if (extras.length) next.notes = `${next.notes ?? ''}\n\n${extras.join('\n')}`.trim()
+                        setForm(next)
+                        persist(next)
+                      }}
+                      className="!px-4 !py-2 !text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* الحالة */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">حالة الإنجاز</label>

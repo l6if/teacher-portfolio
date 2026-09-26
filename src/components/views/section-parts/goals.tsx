@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { AiAssistButton } from '@/components/shared/ai-assist'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import type { TGoal } from '@/lib/types'
@@ -68,7 +69,30 @@ function GoalDialog({ open, onOpenChange, goal }: { open: boolean; onOpenChange:
           <DialogTitle>{goal ? 'تعديل الهدف المهني' : 'هدف مهني جديد'}</DialogTitle>
           <DialogDescription>كلما كان مؤشر القياس واضحًا، سهُل إثبات الأثر لاحقًا في التقارير.</DialogDescription>
         </DialogHeader>
+
         <div className="space-y-4">
+          {/* ✦ اقتراح 4 أهداف من عنوان التركيز الحالي */}
+          {!goal && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-primary/25 bg-primary/6 px-3.5 py-3">
+              <div className="flex items-center gap-2.5">
+                <Icon name="Sparkles" className="size-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">اقتراح الأهداف</p>
+                  <p className="text-[10px] leading-4 text-muted-foreground">اكتب موضوع التركيز أعلاه ثم اطلب 4 أهداف مهنية مقترحة</p>
+                </div>
+              </div>
+              <AiAssistButton
+                action="suggestObjectives"
+                label="اقتراح الأهداف"
+                context={{ title: form.title || undefined, text: form.description || undefined }}
+                onApplyList={(items) => {
+                  // أول هدف يُدخل في الحقل الحالي مباشرة — البقية جاهزة للنسخ من المعاينة
+                  if (items[0]) set('title', items[0])
+                  if (items[1]) set('description', `الأهداف المهنية المقترحة:\n- ${items.join('\n- ')}`)
+                }}
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">عنوان الهدف</label>
             <Input dir="rtl" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="مثال: رفع مستوى إتقان مهارة القراءة" />
