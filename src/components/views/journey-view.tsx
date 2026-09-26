@@ -7,8 +7,8 @@ import { Icon } from '@/components/shared/icon'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingState, ErrorState, EmptyState } from '@/components/shared/states'
 import { TYPE_MAP } from '@/lib/constants'
-import { formatDateShort, formatMonth, relTime } from '@/lib/format'
-import { AR_MONTHS } from '@/lib/format'
+import { formatDateShort, relTime } from '@/lib/format'
+import { storedToHijri, HIJRI_MONTHS } from '@/lib/hijri'
 
 /** رحلتي المهنية — خط زمني لطول العام */
 export function JourneyView() {
@@ -17,11 +17,13 @@ export function JourneyView() {
 
   const byMonth = useMemo(() => {
     if (!data) return []
+    // تجميع هجري — أم القرى (اتساقًا مع العرض والسنوات الدراسية)
     const groups = new Map<string, { year: number; month: number; items: typeof data.achievements }>()
     for (const a of data.achievements) {
-      const d = a.date ? new Date(a.date) : new Date(a.createdAt)
-      const key = `${d.getFullYear()}-${d.getMonth()}`
-      if (!groups.has(key)) groups.set(key, { year: d.getFullYear(), month: d.getMonth(), items: [] })
+      const h = storedToHijri(a.date ?? a.createdAt)
+      if (!h) continue
+      const key = `${h.year}-${h.month}`
+      if (!groups.has(key)) groups.set(key, { year: h.year, month: h.month, items: [] })
       groups.get(key)!.items.push(a)
     }
     return [...groups.values()]
@@ -65,8 +67,8 @@ export function JourneyView() {
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-11 items-center gap-2 rounded-2xl border border-border bg-card px-4 shadow-soft">
                   <Icon name="CalendarDays" className="size-4 text-primary" />
-                  <span className="text-sm font-bold">{AR_MONTHS[g.month]}</span>
-                  <span className="text-xs text-muted-foreground" dir="ltr">{g.year}</span>
+                  <span className="text-sm font-bold">{HIJRI_MONTHS[g.month - 1]}</span>
+                  <span className="text-xs text-muted-foreground" dir="ltr">{g.year} هـ</span>
                 </div>
                 <div className="h-px flex-1 bg-border" />
                 <span className="text-[11px] text-muted-foreground">{g.items.length} إنجازًا</span>

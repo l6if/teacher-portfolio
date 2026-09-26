@@ -1,28 +1,18 @@
-// تنسيق التواريخ والأرقام بالعربية (أرقام لاتينية للوضوح)
+// تنسيق التواريخ والأرقام بالعربية — العرض الهجري (أم القرى) عبر طبقة التحويل المركزية
+// التخزين يبقى ISO/ميلاديًا داخل قاعدة البيانات دون أي تغيير
 
-const dateFmt = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', {
-  day: 'numeric', month: 'long', year: 'numeric',
-})
-const shortFmt = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', {
-  day: 'numeric', month: 'long',
-})
-const monthFmt = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', { month: 'long' })
-
-const relFmt = new Intl.RelativeTimeFormat('ar', { numeric: 'auto' })
+import { formatHijri, formatHijriShort, hijriMonthName, HIJRI_MONTHS } from './hijri'
 
 export function formatDate(d: string | Date | null | undefined): string {
-  if (!d) return '—'
-  try { return dateFmt.format(new Date(d)) } catch { return '—' }
+  return formatHijri(d)
 }
 
 export function formatDateShort(d: string | Date | null | undefined): string {
-  if (!d) return '—'
-  try { return shortFmt.format(new Date(d)) } catch { return '—' }
+  return formatHijriShort(d)
 }
 
 export function formatMonth(d: string | Date | null | undefined): string {
-  if (!d) return '—'
-  try { return monthFmt.format(new Date(d)) } catch { return '—' }
+  return hijriMonthName(d)
 }
 
 export function relTime(d: string | Date | null | undefined): string {
@@ -72,5 +62,5 @@ export function toDateInput(d: string | Date | null | undefined): string {
   return `${y}-${m}-${day}`
 }
 
-/** ترتيب الأشهر عربيًا للرحلة المهنية */
-export const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+/** ترتيب الأشهر الهجرية للرحلة المهنية — أم القرى */
+export const HIJRI_MONTH_LABELS = HIJRI_MONTHS
