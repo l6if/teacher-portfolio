@@ -52,7 +52,7 @@ function AddLinkDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="sm:max-w-md">
+      <DialogContent dir="rtl" className="dialog-sheet sm:max-w-md">
         <DialogHeader className="text-right">
           <DialogTitle>إضافة رابط</DialogTitle>
           <DialogDescription>رابط صفحة، أو مستند سحابي، أو مقطع فيديو — يُحفظ في مكتبة شواهدك.</DialogDescription>
@@ -91,7 +91,7 @@ function LibraryPicker({ open, onOpenChange, onPick }: { open: boolean; onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="flex h-[80vh] flex-col sm:max-w-xl">
+      <DialogContent dir="rtl" className="dialog-sheet flex h-[85dvh] flex-col rounded-t-3xl sm:max-w-xl">
         <DialogHeader className="text-right">
           <DialogTitle>اختيار شاهد من مكتبتك</DialogTitle>
           <DialogDescription>الشاهد الواحد يمكن ربطه بأكثر من إنجاز وهدف دون رفع الملف مرة أخرى.</DialogDescription>
@@ -183,6 +183,7 @@ export function AttachmentsEditor({
   const { yearId } = useScope()
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 })
   const [errors, setErrors] = useState<string[]>([])
   const [linkOpen, setLinkOpen] = useState(false)
   const [libOpen, setLibOpen] = useState(false)
@@ -194,6 +195,7 @@ export function AttachmentsEditor({
     const list = Array.from(files)
     if (!list.length) return
     setUploading(true)
+    setUploadProgress({ done: 0, total: list.length })
     setErrors([])
     const added: TAttachment[] = []
     const failed: string[] = []
@@ -209,6 +211,7 @@ export function AttachmentsEditor({
       } catch {
         failed.push(file.name)
       }
+      setUploadProgress((p) => ({ ...p, done: p.done + 1 }))
     }
     if (added.length) {
       onChange([...attachments, ...added])
@@ -220,6 +223,7 @@ export function AttachmentsEditor({
       toast.error(failed.length === 1 ? 'تعذر رفع هذا الملف. حاول مرة أخرى.' : `تعذر رفع ${failed.length} ملفات — لم يتأثر باقي عملك.`)
     }
     setUploading(false)
+    setUploadProgress({ done: 0, total: 0 })
   }
 
   return (
@@ -249,7 +253,9 @@ export function AttachmentsEditor({
         {uploading ? (
           <>
             <Icon name="Loader2" className="size-7 animate-spin text-primary" />
-            <p className="mt-2.5 text-sm font-medium text-foreground">جارٍ رفع الشواهد…</p>
+            <p className="mt-2.5 text-sm font-medium text-foreground">
+              جارٍ رفع الشواهد…{uploadProgress.total > 1 ? ` (${uploadProgress.done + 1}/${uploadProgress.total})` : ''}
+            </p>
           </>
         ) : (
           <>
@@ -279,7 +285,7 @@ export function AttachmentsEditor({
           </div>
           <button
             onClick={() => inputRef.current?.click()}
-            className="shrink-0 rounded-full border border-destructive/30 bg-card px-3 py-1 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+            className="min-h-9 shrink-0 rounded-full border border-destructive/30 bg-card px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
           >
             إعادة المحاولة
           </button>
@@ -301,11 +307,11 @@ export function AttachmentsEditor({
 
       {/* إضافة من المكتبة / رابط */}
       <div className="flex flex-wrap gap-2.5">
-        <Button variant="outline" size="sm" onClick={() => setLibOpen(true)} className="gap-2 rounded-full">
+        <Button variant="outline" size="sm" onClick={() => setLibOpen(true)} className="min-h-10 gap-2 rounded-full">
           <Icon name="LibraryBig" className="size-4 text-primary" />
           اختيار من مكتبة الشواهد
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)} className="gap-2 rounded-full">
+        <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)} className="min-h-10 gap-2 rounded-full">
           <Icon name="Link2" className="size-4 text-primary" />
           إضافة رابط
         </Button>

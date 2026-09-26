@@ -367,8 +367,8 @@ export function AchievementSheet() {
       >
         {!type && !formAchievementId ? (
           /* الخطوة 1: اختيار النوع */
-          <div className="flex h-full flex-col p-6">
-            <button onClick={closeForm} className="mb-4 flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted" aria-label="إغلاق">
+          <div className="flex h-full flex-col p-4 sm:p-6">
+            <button onClick={closeForm} className="mb-4 flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted" aria-label="إغلاق">
               <Icon name="X" className="size-4.5" />
             </button>
             <SheetTitle className="sr-only">اختيار نوع التوثيق</SheetTitle>
@@ -402,11 +402,11 @@ export function AchievementSheet() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   {id && !viewMode && (
-                    <button onClick={remove} className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label="حذف الإنجاز">
+                    <button onClick={remove} className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label="حذف الإنجاز">
                       <Icon name="Trash2" className="size-4.5" />
                     </button>
                   )}
-                  <button onClick={closeForm} className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted" aria-label="إغلاق">
+                  <button onClick={closeForm} className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted" aria-label="إغلاق">
                     <Icon name="X" className="size-4.5" />
                   </button>
                 </div>
@@ -443,7 +443,7 @@ export function AchievementSheet() {
                         role="radio"
                         aria-checked={status === s}
                         onClick={() => { setStatus(s); persist(form, s) }}
-                        className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                        className={`min-h-10 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors ${
                           status === s
                             ? s === 'COMPLETED' ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                             : s === 'NEEDS_WORK' ? 'border-orange-300 bg-orange-50 text-orange-700'
@@ -517,7 +517,7 @@ export function AchievementSheet() {
                             <p className="text-[11px] text-muted-foreground">{a.kind === 'LINK' ? 'رابط' : a.fileName ?? ''}</p>
                           </div>
                           {a.url && (
-                            <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" aria-label="فتح">
+                            <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex size-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary" aria-label="فتح">
                               <Icon name="ExternalLink" className="size-4" />
                             </a>
                           )}
@@ -536,18 +536,21 @@ export function AchievementSheet() {
               </div>
             </div>
 
-            {/* التذييل */}
+            {/* التذييل — ثابت أسفل الشاشة فوق لوحة المفاتيح وشريط النظام */}
             {!viewMode && (
-              <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border bg-card/95 px-5 py-4 backdrop-blur">
+              <div
+                className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4"
+                style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+              >
                 <button
                   onClick={() => finish('DRAFT')}
-                  className="rounded-full px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                  className="min-h-11 rounded-full px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   حفظ كمسودة
                 </button>
                 <button
                   onClick={() => finish('COMPLETED')}
-                  className="flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98]"
+                  className="flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98]"
                 >
                   <Icon name="Check" className="size-4" />
                   حفظ الإنجاز

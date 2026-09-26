@@ -62,7 +62,7 @@ function GoalDialog({ open, onOpenChange, goal }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent dir="rtl" className="dialog-sheet max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader className="text-right">
           <DialogTitle>{goal ? 'تعديل الهدف المهني' : 'هدف مهني جديد'}</DialogTitle>
           <DialogDescription>كلما كان مؤشر القياس واضحًا، سهُل إثبات الأثر لاحقًا في التقارير.</DialogDescription>
@@ -190,10 +190,10 @@ export function GoalsSection({ readonly }: { readonly: boolean }) {
               </div>
               {!readonly && (
                 <div className="flex items-center gap-1">
-                  <button onClick={() => { setEditing(g); setDialogOpen(true) }} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary" aria-label="تعديل الهدف">
+                  <button onClick={() => { setEditing(g); setDialogOpen(true) }} className="flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary" aria-label="تعديل الهدف">
                     <Icon name="Pencil" className="size-4" />
                   </button>
-                  <button onClick={() => remove(g.id)} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label="حذف الهدف">
+                  <button onClick={() => remove(g.id)} className="flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label="حذف الهدف">
                     <Icon name="Trash2" className="size-4" />
                   </button>
                 </div>

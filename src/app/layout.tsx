@@ -24,6 +24,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // يبقي أزرار الحفظ الثابتة مرئية فوق لوحة المفاتيح على الجوال
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

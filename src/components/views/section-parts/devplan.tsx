@@ -53,7 +53,7 @@ function PlanDialog({ open, onOpenChange, plan }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent dir="rtl" className="dialog-sheet max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader className="text-right">
           <DialogTitle>{plan ? 'تعديل بند الخطة' : 'بند جديد في الخطة التطويرية'}</DialogTitle>
           <DialogDescription>ابنِ خطتك من تأملك المهني — هدف واضح وإجراء قابل للتنفيذ.</DialogDescription>
@@ -148,10 +148,10 @@ export function DevPlanSection({ readonly }: { readonly: boolean }) {
               </div>
               {!readonly && (
                 <div className="flex items-center gap-1">
-                  <button onClick={() => { setEditing(p); setDialogOpen(true) }} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary" aria-label="تعديل">
+                  <button onClick={() => { setEditing(p); setDialogOpen(true) }} className="flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary" aria-label="تعديل">
                     <Icon name="Pencil" className="size-4" />
                   </button>
-                  <button onClick={() => remove(p.id)} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label="حذف">
+                  <button onClick={() => remove(p.id)} className="flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label="حذف">
                     <Icon name="Trash2" className="size-4" />
                   </button>
                 </div>

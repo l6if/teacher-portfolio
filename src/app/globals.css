@@ -162,6 +162,58 @@
   }
 }
 
+/* ═══ الجوال: زر الإضافة العائم فوق شريط التنقل ═══════════════ */
+.fab-add {
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  left: calc(16px + env(safe-area-inset-left, 0px));
+}
+@media (min-width: 1024px) {
+  .fab-add { display: none !important; }
+}
+
+/* ═══ الجوال: Dialog تتحول إلى Bottom Sheet أنيق ══════════════
+   الحوارات القياسية (السنوات، الروابط، المكتبة…) تنزلق من الأسفل
+   على الشاشات الضيقة بدل نافذة مضغوطة في المنتصف. */
+@media (max-width: 639px) {
+  [data-slot="dialog-content"].dialog-sheet {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    translate: none !important;
+    transform: none !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-top: 1px solid var(--border) !important;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)) !important;
+    margin: 0 !important;
+    animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  [data-slot="dialog-content"].dialog-sheet[data-state="closed"] {
+    animation: sheet-down 0.2s ease-in both;
+  }
+  /* زر الإغلاق يبقى في متناول الإبهام */
+  [data-slot="dialog-content"].dialog-sheet [data-slot="dialog-close"] {
+    top: 0.75rem !important;
+    left: 0.75rem !important;
+    right: auto !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
 /* حركات دقيقة 150–300ms */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(8px); }
@@ -188,13 +240,13 @@
   * { scroll-behavior: auto !important; }
 }
 
-/* ═══ طباعة التقارير — A4 احترافي ═════════════════════════════ */
+/* ═══ طباعة التقارير — A4 تحريري احترافي ═════════════════════════ */
 #print-root { display: none; }
 
 @media print {
   @page {
     size: A4 portrait;
-    margin: 16mm 14mm 22mm 14mm;
+    margin: 18mm 15mm 24mm 15mm;
   }
   html, body {
     background: #ffffff !important;
@@ -206,6 +258,9 @@
   #print-root * { visibility: visible; }
   /* إخفاء النوافذ المنبثقة والإشعارات عند الطباعة */
   [data-radix-portal], [data-sonner-toaster], nextjs-portal { display: none !important; }
+
+  /* منع الأسطر اليتيمة والأرامل في النصوص الطويلة */
+  p, li { orphans: 3; widows: 3; }
 
   .print-page {
     page-break-after: always;
@@ -224,6 +279,12 @@
     break-before: page;
     page-break-inside: avoid;
   }
+  /* جداول الخطة: يُكرَّر الرأس تلقائيًا عند امتداد الجدول لصفحة ثانية */
+  table { page-break-inside: auto; }
+  tr, th, td { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+
   .print-footer {
     position: fixed;
     bottom: 0;
@@ -231,11 +292,14 @@
     left: 0;
     display: flex;
     justify-content: space-between;
-    font-size: 9.5px;
-    color: #6b7a76;
-    border-top: 0.6px solid #d7e0dd;
+    font-size: 8.5px;
+    color: #66786F;
+    letter-spacing: 0.03em;
+    border-top: 0.6px solid #D9E3DF;
     padding-top: 2mm;
     padding-bottom: 1mm;
   }
   img { max-width: 100% !important; }
+  /* الصور لا تُقطع بين الصفحات */
+  figure { page-break-inside: avoid; }
 }

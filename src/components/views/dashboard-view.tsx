@@ -47,12 +47,12 @@ export function DashboardView() {
 
   return (
     <div className="space-y-5">
-      {/* التحية */}
+      {/* ١ — التحية */}
       <div className="anim-fade-up">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-[1.7rem]">
+        <h1 className="text-[22px] font-bold tracking-tight text-foreground sm:text-[1.7rem]">
           {greeting()}، {user.role === 'MANAGER' ? '' : 'أستاذ '}{firstName(user.name)}
         </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
+        <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
           {completion.overall >= 85
             ? 'ملف إنجازك لهذا العام يتقدم بشكل رائع — واصل التوثيق.'
             : completion.overall >= 50
@@ -64,36 +64,37 @@ export function DashboardView() {
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-12">
+      {/* ٢ — بطاقة الاكتمال ثم التوصية والاختصارات (عمود واحد على الجوال) */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {/* بطاقة الاكتمال الرئيسية */}
-        <div className="anim-fade-up anim-delay-1 relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-soft lg:col-span-4">
+        <div className="anim-fade-up anim-delay-1 relative overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-soft sm:p-6 lg:col-span-4">
           <div className="pointer-events-none absolute -left-16 -top-16 size-44 rounded-full bg-primary/5 blur-2xl" />
           <div className="relative">
             <div className="mb-1 flex items-center gap-2">
               <Icon name="BadgeCheck" className="size-4.5 text-primary" />
               <h2 className="text-sm font-semibold text-foreground">اكتمال ملف الإنجاز</h2>
             </div>
-            <p className="mb-5 text-xs leading-5 text-muted-foreground">
+            <p className="mb-4 text-xs leading-5 text-muted-foreground sm:mb-5">
               يُحسب من المحتوى الفعلي في مجالاتك — لا من عدد الملفات.
             </p>
-            <div className="flex justify-center py-2">
+            <div className="flex justify-center py-1 sm:py-2">
               <ProgressRing value={completion.overall} sublabel="اكتمال الملف" />
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-2.5">
-              <div className="rounded-2xl bg-muted/60 p-3 text-center">
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-2.5">
+              <div className="rounded-2xl bg-muted/60 p-2.5 text-center sm:p-3">
                 <p className="text-xl font-bold tabular-nums text-foreground">{formatNumber(counts.achievements)}</p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">إنجازًا</p>
               </div>
-              <div className="rounded-2xl bg-muted/60 p-3 text-center">
+              <div className="rounded-2xl bg-muted/60 p-2.5 text-center sm:p-3">
                 <p className="text-xl font-bold tabular-nums text-foreground">{formatNumber(counts.evidence)}</p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">شاهدًا</p>
               </div>
-              <div className="rounded-2xl bg-emerald-50/80 p-3 text-center">
+              <div className="rounded-2xl bg-emerald-50/80 p-2.5 text-center sm:p-3">
                 <p className="text-xl font-bold tabular-nums text-emerald-700">{formatNumber(counts.completedSections)}</p>
                 <p className="mt-0.5 text-[11px] text-emerald-700/80">مجالًا مكتملًا</p>
               </div>
-              <div className="rounded-2xl bg-orange-50/80 p-3 text-center">
+              <div className="rounded-2xl bg-orange-50/80 p-2.5 text-center sm:p-3">
                 <p className="text-xl font-bold tabular-nums text-orange-700">{formatNumber(counts.needsWorkSections)}</p>
                 <p className="mt-0.5 text-[11px] text-orange-700/80">تحت استكمالًا</p>
               </div>
@@ -101,7 +102,7 @@ export function DashboardView() {
 
             <button
               onClick={() => navigate('portfolio')}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-border py-2.5 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border py-2.5 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               عرض ملف الإنجاز كاملًا
               <Icon name="ArrowLeft" className="size-4" />
@@ -156,17 +157,17 @@ export function DashboardView() {
                 <h2 className="text-sm font-semibold text-foreground">إضافة سريعة</h2>
                 <button
                   onClick={() => openForm()}
-                  className="text-xs font-medium text-primary transition-colors hover:text-primary/70 focus-visible:outline-2 focus-visible:rounded focus-visible:outline-ring"
+                  className="flex min-h-9 items-center rounded px-1 text-xs font-medium text-primary transition-colors hover:text-primary/70 focus-visible:outline-2 focus-visible:rounded focus-visible:outline-ring"
                 >
                   كل الأنواع
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5">
                 {QUICK_ADD.map((q) => (
                   <button
                     key={q.type}
                     onClick={() => openForm({ type: q.type })}
-                    className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-right transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:translate-y-0"
+                    className="group flex min-h-11 items-center gap-3 rounded-2xl border border-border bg-card p-3 text-right transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:translate-y-0 sm:p-3.5"
                   >
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                       <Icon name={q.icon} className="size-4.5" strokeWidth={1.9} />
@@ -177,29 +178,18 @@ export function DashboardView() {
               </div>
             </div>
           )}
-
-          {/* إحصائيات ذات قيمة */}
-          <div className="anim-fade-up anim-delay-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
-            {stats.map((s) => (
-              <div key={s.label} className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-                <Icon name={s.icon} className="size-4.5 text-primary" strokeWidth={1.9} />
-                <p className="mt-2.5 text-xl font-bold tabular-nums tracking-tight text-foreground">{s.value}</p>
-                <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{s.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* النشاط الأخير + المسودات */}
-      <div className="grid gap-5 lg:grid-cols-12">
-        <div className="anim-fade-up anim-delay-3 rounded-3xl border border-border bg-card p-5 shadow-soft lg:col-span-8">
+      {/* ٤ — النشاط الأخير + المسودات */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <div className="anim-fade-up anim-delay-3 min-w-0 rounded-3xl border border-border bg-card p-4 shadow-soft sm:p-5 lg:col-span-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">آخر ما أضفته</h2>
             {user.role !== 'MANAGER' && (
               <button
                 onClick={() => navigate('journey')}
-                className="flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/70 focus-visible:outline-2 focus-visible:rounded focus-visible:outline-ring"
+                className="flex min-h-9 items-center gap-1.5 rounded px-1 text-xs font-medium text-primary transition-colors hover:text-primary/70 focus-visible:outline-2 focus-visible:rounded focus-visible:outline-ring"
               >
                 رحلتي المهنية
                 <Icon name="ArrowLeft" className="size-3.5" />
@@ -221,22 +211,22 @@ export function DashboardView() {
               )}
             </div>
           ) : (
-            <ol className="relative space-y-1" dir="rtl">
+            <ol className="relative min-w-0 space-y-1" dir="rtl">
               <span className="absolute bottom-4 right-[19px] top-4 w-px bg-border" aria-hidden="true" />
               {recent.map((a) => {
                 const t = TYPE_MAP[a.type as keyof typeof TYPE_MAP]
                 return (
-                  <li key={a.id}>
+                  <li key={a.id} className="min-w-0">
                     <button
                       onClick={() => openForm({ achievementId: a.id })}
-                      className="group relative flex w-full items-center gap-3.5 rounded-2xl p-2.5 text-right transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      className="group relative flex w-full items-center gap-3 rounded-2xl p-2.5 text-right transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <span className={`relative z-10 flex size-9 shrink-0 items-center justify-center rounded-xl border bg-card ${t ? 'border-primary/25 text-primary' : 'border-border text-muted-foreground'}`}>
                         <Icon name={t?.icon ?? 'CircleDashed'} className="size-4" strokeWidth={1.9} />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium text-foreground group-hover:text-primary">{a.title}</span>
-                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
                           {t?.label ?? 'إنجاز'} • {a.date ? relTime(a.date) : relTime(a.createdAt)}
                         </span>
                       </span>
@@ -250,7 +240,7 @@ export function DashboardView() {
         </div>
 
         {/* المسودات */}
-        <div className="anim-fade-up anim-delay-4 rounded-3xl border border-border bg-card p-5 shadow-soft lg:col-span-4">
+        <div className="anim-fade-up anim-delay-4 min-w-0 rounded-3xl border border-border bg-card p-4 shadow-soft sm:p-5 lg:col-span-4">
           <div className="mb-4 flex items-center gap-2">
             <Icon name="SquarePen" className="size-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold text-foreground">مسوداتك غير المكتملة</h2>
@@ -291,6 +281,17 @@ export function DashboardView() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ٥ — إحصائيات مختصرة: آخر قسم على الجوال، صف كامل على سطح المكتب */}
+      <div className="anim-fade-up anim-delay-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+        {stats.map((s) => (
+          <div key={s.label} className="min-w-0 rounded-2xl border border-border bg-card p-3.5 shadow-soft sm:p-4">
+            <Icon name={s.icon} className="size-4.5 text-primary" strokeWidth={1.9} />
+            <p className="mt-2 text-lg font-bold tabular-nums tracking-tight text-foreground sm:text-xl">{s.value}</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{s.label}</p>
+          </div>
+        ))}
       </div>
 
       {user.role === 'MANAGER' && !readonly && (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useApp } from '@/store/app-store'
 import { useSession } from '@/hooks/use-data'
 import { Icon } from '@/components/shared/icon'
@@ -54,13 +55,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     toast('تم تسجيل الخروج')
   }
 
+  // إخفاء زر الإضافة العائم عند فتح نموذج الإنجاز حتى لا يغطي الحقول (اشتقاق مباشر)
+  const formOpen = useApp((s) => s.formOpen)
+  const fabVisible = !formOpen
+
   const NavButton = ({ item, mobile = false }: { item: NavItem; mobile?: boolean }) => {
     const active = view === item.view
     if (mobile) {
       return (
         <button
           onClick={() => navigate(item.view)}
-          className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
+          className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl pb-1.5 pt-2 text-[11px] transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
             active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
           }`}
           aria-current={active ? 'page' : undefined}
@@ -148,49 +153,65 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
           )}
-          <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-3 px-4 sm:px-6">
+          <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
             {/* شعار الجوال */}
-            <div className="flex items-center gap-2.5 lg:hidden">
+            <div className="flex items-center gap-2 lg:hidden">
               <div className="flex size-9 items-center justify-center rounded-xl bg-primary shadow-soft">
                 <Icon name="GraduationCap" className="size-4.5 text-primary-foreground" strokeWidth={1.8} />
               </div>
-              <span className="text-sm font-bold">ملف إنجازي</span>
+              <span className="hidden text-sm font-bold min-[390px]:inline">ملف إنجازي</span>
             </div>
 
-            <div className="flex-1" />
+            {/* مبدّل السنوات — للجوال فقط (يبقى في الشريط الجانبي على سطح المكتب) */}
+            <div className="mr-auto lg:hidden">
+              <YearSwitcher compact />
+            </div>
+
+            <div className="hidden flex-1 lg:block" />
 
             {/* البحث */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card px-4 text-sm text-muted-foreground transition-all hover:border-primary/40 hover:shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-64 sm:justify-start md:w-80"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-all hover:border-primary/40 hover:shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:gap-2.5 sm:px-4 sm:text-sm sm:hover:gap-2.5 md:w-80"
               aria-label="بحث شامل"
             >
-              <Icon name="Search" className="size-4 shrink-0" />
+              <Icon name="Search" className="size-4.5 shrink-0" />
               <span className="hidden sm:inline">ابحث في ملفك…</span>
               <kbd className="mr-auto hidden rounded-md border border-border bg-muted px-1.5 text-[10px] text-muted-foreground md:block" dir="ltr">/</kbd>
             </button>
 
-            {/* إضافة إنجاز — للمعلم فقط */}
+            {/* إضافة إنجاز — للمعلم فقط، على سطح المكتب (على الجوال زر عائم) */}
             {user?.role === 'TEACHER' && (
               <button
                 onClick={() => openForm()}
-                className="flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] sm:px-5"
+                className="hidden h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] lg:flex"
               >
                 <Icon name="Plus" className="size-4.5" />
-                <span className="hidden sm:inline">إضافة إنجاز</span>
+                <span>إضافة إنجاز</span>
               </button>
             )}
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1240px] flex-1 px-4 pb-28 pt-6 sm:px-6 lg:pb-12">
+        <main className="mx-auto w-full max-w-[1240px] flex-1 px-4 pb-36 pt-5 sm:px-6 sm:pt-6 lg:pb-12">
           {children}
         </main>
       </div>
 
+      {/* زر الإضافة العائم — الجوال فقط، فوق شريط التنقل مباشرة */}
+      {user?.role === 'TEACHER' && !readonly && fabVisible && (
+        <button
+          onClick={() => openForm()}
+          className="fab-add fixed z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lift transition-transform hover:bg-primary/95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-95 lg:hidden"
+          aria-label="إضافة إنجاز جديد"
+        >
+          <Icon name="Plus" className="size-6" strokeWidth={2.2} />
+        </button>
+      )}
+
       {/* شريط التنقل السفلي — الجوال */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur-md lg:hidden" aria-label="التنقل السفلي" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex items-stretch px-2">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md lg:hidden" aria-label="التنقل السفلي" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex items-stretch px-1.5 pt-1">
           {mobileNav.map((item) => <NavButton key={item.view} item={item} mobile />)}
         </div>
       </nav>

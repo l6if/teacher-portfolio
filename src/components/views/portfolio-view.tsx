@@ -55,14 +55,14 @@ export function PortfolioView() {
       </div>
 
       {/* بطاقات المجالات */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         {SECTIONS.map((s, i) => {
           const value = completion.sections[s.key] ?? 0
           return (
             <button
               key={s.key}
               onClick={() => navigate('section', { sectionKey: s.key })}
-              className={`group anim-fade-up rounded-3xl border border-border bg-card p-5 text-right transition-all hover:-translate-y-1 hover:border-primary/35 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${i < 6 ? `anim-delay-${Math.min(i + 1, 4)}` : ''}`}
+              className={`group anim-fade-up rounded-3xl border border-border bg-card p-4 text-right transition-all hover:-translate-y-1 hover:border-primary/35 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-5 ${i < 6 ? `anim-delay-${Math.min(i + 1, 4)}` : ''}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex size-11 items-center justify-center rounded-2xl bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
@@ -82,7 +82,7 @@ export function PortfolioView() {
                 <span className={`rounded-full px-2 py-0.5 ${value >= 100 ? 'bg-emerald-50 text-emerald-700' : value > 0 ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'}`}>
                   {value >= 100 ? 'مكتمل' : value > 0 ? 'قيد البناء' : 'لم يبدأ بعد'}
                 </span>
-                <span className="flex items-center gap-1 font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="flex min-h-6 items-center gap-1 font-medium text-primary opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   فتح المجال
                   <Icon name="ArrowLeft" className="size-3.5" />
                 </span>

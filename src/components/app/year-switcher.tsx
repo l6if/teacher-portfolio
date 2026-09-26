@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 /** مبدّل السنوات الدراسية + الأرشفة + إنشاء عام جديد */
-export function YearSwitcher() {
+export function YearSwitcher({ compact = false }: { compact?: boolean }) {
   const { data: session } = useSession()
   const viewUserId = useApp((s) => s.viewUserId)
   const { data: dashboard } = useDashboard()
@@ -85,21 +85,33 @@ export function YearSwitcher() {
     <>
       <DropdownMenu dir="rtl">
         <DropdownMenuTrigger asChild>
-          <button
-            className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 text-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            aria-label="تبديل العام الدراسي"
-          >
-            <Icon name="CalendarDays" className="size-4 shrink-0 text-primary" />
-            <span className="flex-1 text-right font-medium text-foreground">
-              {active?.label ?? 'اختر العام'}
-            </span>
-            {active?.archived && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">مؤرشف</span>
-            )}
-            <Icon name="ChevronDown" className="size-3.5 shrink-0 text-muted-foreground" />
-          </button>
+          {compact ? (
+            <button
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              aria-label="تبديل العام الدراسي"
+            >
+              <Icon name="CalendarDays" className="size-3.5 shrink-0 text-primary" />
+              <span className="max-w-24 truncate">{active?.label ?? 'العام'}</span>
+              {active?.archived && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">مؤرشف</span>}
+              <Icon name="ChevronDown" className="size-3 shrink-0 text-muted-foreground" />
+            </button>
+          ) : (
+            <button
+              className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 text-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              aria-label="تبديل العام الدراسي"
+            >
+              <Icon name="CalendarDays" className="size-4 shrink-0 text-primary" />
+              <span className="flex-1 text-right font-medium text-foreground">
+                {active?.label ?? 'اختر العام'}
+              </span>
+              {active?.archived && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">مؤرشف</span>
+              )}
+              <Icon name="ChevronDown" className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-60">
+        <DropdownMenuContent align={compact ? 'end' : 'start'} className="w-60">
           <DropdownMenuLabel className="text-xs text-muted-foreground">العام الدراسي</DropdownMenuLabel>
           {years.map((y) => (
             <DropdownMenuItem
@@ -129,7 +141,7 @@ export function YearSwitcher() {
 
       {/* عام جديد */}
       <Dialog open={newYearOpen} onOpenChange={setNewYearOpen}>
-        <DialogContent dir="rtl" className="sm:max-w-md">
+        <DialogContent dir="rtl" className="dialog-sheet sm:max-w-md">
           <DialogHeader className="text-right sm:text-right">
             <DialogTitle>عام دراسي جديد</DialogTitle>
             <DialogDescription className="leading-6">
@@ -160,7 +172,7 @@ export function YearSwitcher() {
 
       {/* أرشفة */}
       <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
-        <DialogContent dir="rtl" className="sm:max-w-md">
+        <DialogContent dir="rtl" className="dialog-sheet sm:max-w-md">
           <DialogHeader className="text-right sm:text-right">
             <DialogTitle>إنهاء وأرشفة ملف الإنجاز؟</DialogTitle>
             <DialogDescription className="leading-6">

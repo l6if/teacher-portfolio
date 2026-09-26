@@ -8,12 +8,14 @@ import { ProgressBar } from '@/components/shared/progress'
 import { LoadingState, ErrorState, EmptyState } from '@/components/shared/states'
 import { PageHeader } from '@/components/shared/page-header'
 import { relTime } from '@/lib/format'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 
 /** عرض المدير — ملفات إنجاز المعلمين */
 export function ManagerView() {
   const { data, isLoading, error, refetch } = useManagerTeachers()
   const [q, setQ] = useState('')
   const [subject, setSubject] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const setViewUser = useApp((s) => s.setViewUser)
   const navigate = useApp((s) => s.navigate)
 
@@ -37,21 +39,23 @@ export function ManagerView() {
       />
 
       <div className="mb-5 flex flex-wrap items-center gap-2.5 anim-fade-up">
-        <div className="relative min-w-52 flex-1">
+        <div className="relative min-w-0 flex-1">
           <Icon name="Search" className="absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             dir="rtl"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="ابحث باسم المعلم أو التخصص…"
-            className="h-10 w-full rounded-xl border border-input bg-card pr-10 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-ring/30"
+            className="h-11 w-full rounded-xl border border-input bg-card pr-10 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-ring/30"
             aria-label="البحث عن معلم"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+
+        {/* فلاتر التخصص — أزرار مباشرة على الشاشات الأكبر */}
+        <div className="hidden flex-wrap items-center gap-1.5 sm:flex">
           <button
             onClick={() => setSubject('')}
-            className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${!subject ? 'border-primary bg-secondary font-medium text-secondary-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
+            className={`min-h-9 rounded-full border px-3.5 py-1.5 text-xs transition-colors ${!subject ? 'border-primary bg-secondary font-medium text-secondary-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
           >
             كل التخصصات
           </button>
@@ -59,12 +63,52 @@ export function ManagerView() {
             <button
               key={s}
               onClick={() => setSubject(subject === s ? '' : s)}
-              className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${subject === s ? 'border-primary bg-secondary font-medium text-secondary-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
+              className={`min-h-9 rounded-full border px-3.5 py-1.5 text-xs transition-colors ${subject === s ? 'border-primary bg-secondary font-medium text-secondary-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
             >
               {s}
             </button>
           ))}
         </div>
+
+        {/* تصفية — Bottom Sheet على الجوال */}
+        <Drawer open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <DrawerTrigger asChild>
+            <button
+              className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring sm:hidden"
+              aria-label="تصفية التخصصات"
+            >
+              <Icon name="SlidersHorizontal" className="size-4" />
+              تصفية
+              {subject && (
+                <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">1</span>
+              )}
+            </button>
+          </DrawerTrigger>
+          <DrawerContent dir="rtl">
+            <div className="mx-auto w-full max-w-sm pb-6">
+              <DrawerHeader className="text-right">
+                <DrawerTitle className="text-right">تصفية حسب التخصص</DrawerTitle>
+              </DrawerHeader>
+              <div className="flex flex-wrap gap-2 px-4">
+                <button
+                  onClick={() => { setSubject(''); setFiltersOpen(false) }}
+                  className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${!subject ? 'border-primary bg-secondary font-medium text-secondary-foreground' : 'border-border text-muted-foreground'}`}
+                >
+                  كل التخصصات
+                </button>
+                {allSubjects.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setSubject(subject === s ? '' : s); setFiltersOpen(false) }}
+                    className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${subject === s ? 'border-primary bg-secondary font-medium text-secondary-foreground' : 'border-border text-muted-foreground'}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
 
       {teachers.length === 0 ? (
@@ -113,7 +157,7 @@ export function ManagerView() {
                 </span>
               </div>
 
-              <div className="mt-3.5 flex items-center justify-end gap-1 text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="mt-3.5 flex items-center justify-end gap-1 text-[11px] font-medium text-primary opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                 فتح الملف بنمط القراءة
                 <Icon name="ArrowLeft" className="size-3.5" />
               </div>

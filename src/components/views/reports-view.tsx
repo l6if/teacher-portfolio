@@ -89,7 +89,7 @@ export function ReportsView() {
       />
 
       {/* ملخص أعلى التقارير */}
-      <div className="mb-6 grid grid-cols-2 gap-2.5 rounded-3xl border border-border bg-card p-4 anim-fade-up sm:grid-cols-5 sm:p-5">
+      <div className="mb-6 grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card p-3 anim-fade-up sm:grid-cols-5 sm:gap-2.5 sm:p-5">
         {[
           { label: 'إنجازًا', value: counts.achievements },
           { label: 'مبادرات', value: counts.initiatives },
@@ -115,19 +115,19 @@ export function ReportsView() {
       )}
 
       {/* بطاقات التقارير */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {REPORTS.map((r, i) => (
           <div key={r.key} className={`group anim-fade-up anim-delay-${Math.min(i + 1, 4)} flex flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-lift`}>
-            <div className={`bg-gradient-to-l ${r.accent} p-5 text-white`}>
+            <div className={`bg-gradient-to-l ${r.accent} p-4 text-white sm:p-5`}>
               <div className="flex items-center justify-between">
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-                  <Icon name={r.icon} className="size-5.5" strokeWidth={1.8} />
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-white/15 backdrop-blur sm:size-11">
+                  <Icon name={r.icon} className="size-5 sm:size-5.5" strokeWidth={1.8} />
                 </div>
                 <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-medium backdrop-blur">{r.pages}</span>
               </div>
-              <h3 className="mt-4 text-base font-bold">{r.title}</h3>
+              <h3 className="mt-3.5 text-base font-bold sm:mt-4">{r.title}</h3>
             </div>
-            <div className="flex flex-1 flex-col p-5">
+            <div className="flex flex-1 flex-col p-4 sm:p-5">
               <p className="flex-1 text-[13px] leading-6 text-muted-foreground">{r.desc}</p>
 
               {r.key === 'custom' && (
@@ -154,11 +154,11 @@ export function ReportsView() {
               <Button
                 onClick={() => generate(r.key, selected)}
                 disabled={!hasData}
-                className="mt-4 w-full gap-2 rounded-full shadow-soft"
+                className="mt-4 min-h-11 w-full gap-2 rounded-full shadow-soft"
                 variant={r.key === 'full' ? 'default' : 'outline'}
               >
                 <Icon name="Printer" className="size-4" />
-                {r.key === 'custom' ? 'إنشاء التقرير' : 'تصدير PDF'}
+                {r.key === 'custom' ? 'إنشاء التقرير' : 'إنشاء PDF'}
               </Button>
             </div>
           </div>
