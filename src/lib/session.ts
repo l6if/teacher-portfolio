@@ -1,9 +1,53 @@
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from './db'
-import { parseSessionToken } from './auth'
+import { parseSessionToken, SESSION_MAX_AGE } from './auth'
 
 export const SESSION_COOKIE = 'pf_session'
+
+// ═══ كوكي الجلسة عبر بوابات HTTPS (معاينة space-z.ai مثلًا) ═══
+// المتصفح يمنع كوكيز SameSite=Lax/Strict في السياق عبر الموقع (iframe المعاينة)،
+// فينجح POST /api/session لكن الكوكي لا يُخزَّن → /api/me يعيد 401 فورًا.
+// الحل: عند خدمة الطلب عبر HTTPS (مباشرة أو خلف بروكسي) نُصدر الكوكي
+// SameSite=None + Secure — وهي الصيغة الوحيدة المقبولة في ذلك السياق.
+// محليًا عبر HTTP يبقى Lax كما كان (لا تغيير على تجربة التطوير).
+
+/** هل يُخدم الطلب عبر HTTPS؟ (مباشرة، أو خلف بروكسي/بوابة يحترم الترويسات القياسية) */
+export function isSecureRequest(req: NextRequest): boolean {
+  if (req.nextUrl.protocol === 'https:') return true
+  const proto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase()
+  if (proto === 'https') return true
+  if (req.headers.get('x-forwarded-ssl')?.toLowerCase() === 'on') return true
+  // نطاق حقيقي (ليس localhost ولا IP) = لا يُوَصَّل إلا عبر بوابة HTTPS حتمًا
+  const host = (req.headers.get('host') ?? '').split(':')[0].trim().toLowerCase()
+  const isLocal =
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '[::1]' ||
+    /^\d{1,3}(\.\d{1,3}){3}$/.test(host)
+  return !isLocal && host.includes('.')
+}
+
+/** خيارات كوكي الجلسة — مشتقة من سياق الطلب نفسه */
+export function sessionCookieOptions(req: NextRequest) {
+  const secure = isSecureRequest(req)
+  return {
+    httpOnly: true as const,
+    sameSite: (secure ? 'none' : 'lax') as 'none' | 'lax',
+    secure,
+    path: '/',
+    maxAge: SESSION_MAX_AGE,
+  }
+}
+
+/** حذف كوكي الجلسة بنفس خصائص الإصدار حتى يُطابق فعليًا في كل السياقات */
+export function clearSessionCookie(res: NextResponse, req: NextRequest) {
+  res.cookies.set(SESSION_COOKIE, '', {
+    ...sessionCookieOptions(req),
+    maxAge: 0,
+    expires: new Date(0),
+  })
+}
 
 // ═══ أمان بيانات المستخدم ═══════════════════════════════════
 // passwordHash (وأي بيانات أمان داخلية) لا يغادر الخادم أبدًا عبر أي API.

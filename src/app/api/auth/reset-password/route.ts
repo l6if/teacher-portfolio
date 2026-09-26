@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { safeJson } from '@/lib/session'
-import { hashPassword, hashResetToken, createSessionToken, SESSION_MAX_AGE } from '@/lib/auth'
-import { SESSION_COOKIE } from '@/lib/session'
+import { safeJson, sessionCookieOptions, SESSION_COOKIE } from '@/lib/session'
+import { hashPassword, hashResetToken, createSessionToken } from '@/lib/auth'
 import { validatePassword } from '@/lib/validation'
 
 /**
@@ -59,12 +58,8 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true, message: 'تم تحديث كلمة المرور بنجاح.' })
     // جلسة جديدة بالـ epoch المرفوع — دخول تلقائي بعد الاستعادة
-    res.cookies.set(SESSION_COOKIE, createSessionToken(user.id, user.sessionEpoch), {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_MAX_AGE,
-    })
+    // (خيارات مشتقة من الطلب — تعمل خلف بوابات HTTPS/المعاينة أيضًا)
+    res.cookies.set(SESSION_COOKIE, createSessionToken(user.id, user.sessionEpoch), sessionCookieOptions(req))
     return res
   } catch (e) {
     console.error('reset-password error', e)

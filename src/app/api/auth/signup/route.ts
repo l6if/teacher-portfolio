@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser, safeJson } from '@/lib/session'
-import { hashPassword, createSessionToken, SESSION_MAX_AGE } from '@/lib/auth'
-import { SESSION_COOKIE } from '@/lib/session'
+import { getCurrentUser, safeJson, sessionCookieOptions, SESSION_COOKIE } from '@/lib/session'
+import { hashPassword, createSessionToken } from '@/lib/auth'
 import { normalizeEmail, validateEmail, validatePassword } from '@/lib/validation'
 import { hijriToday } from '@/lib/hijri'
 
@@ -53,12 +52,8 @@ export async function POST(req: NextRequest) {
     })
 
     const res = NextResponse.json({ ok: true, user })
-    res.cookies.set(SESSION_COOKIE, createSessionToken(user.id, 0), {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_MAX_AGE,
-    })
+    // خيارات مشتقة من الطلب — SameSite=None+Secure خلف بوابات HTTPS (معاينة)
+    res.cookies.set(SESSION_COOKIE, createSessionToken(user.id, 0), sessionCookieOptions(req))
     return res
   } catch (e) {
     // خطأ قاعدة بيانات محتمل (تسابق على البريد الفريد مثلًا) — رسالة بشرية بلا تفاصيل داخلية

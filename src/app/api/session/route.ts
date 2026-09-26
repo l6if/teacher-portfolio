@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser, SESSION_COOKIE, safeJson } from '@/lib/session'
-import { createSessionToken, verifyPassword, SESSION_MAX_AGE } from '@/lib/auth'
+import { getCurrentUser, SESSION_COOKIE, safeJson, sessionCookieOptions, clearSessionCookie } from '@/lib/session'
+import { createSessionToken, verifyPassword } from '@/lib/auth'
 import { normalizeEmail } from '@/lib/validation'
 
 /**
@@ -59,17 +59,14 @@ export async function POST(req: NextRequest) {
     ok: true,
     user: { id: user.id, name: user.name, email: user.email, role: user.role, gender: user.gender },
   })
-  res.cookies.set(SESSION_COOKIE, createSessionToken(user.id, user.sessionEpoch), {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: SESSION_MAX_AGE,
-  })
+  // خيارات الكوكي مشتقة من سياق الطلب: عبر بوابة HTTPS (معاينة) يُصدر
+  // SameSite=None + Secure وإلا رفضه المتصفح في السياق عبر الموقع وفشل الدخول
+  res.cookies.set(SESSION_COOKIE, createSessionToken(user.id, user.sessionEpoch), sessionCookieOptions(req))
   return res
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
   const res = NextResponse.json({ ok: true })
-  res.cookies.delete(SESSION_COOKIE)
+  clearSessionCookie(res, req)
   return res
 }
