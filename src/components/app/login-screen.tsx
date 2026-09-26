@@ -34,7 +34,23 @@ export function LoginScreen({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       })
-      const data = await res.json().catch(() => ({}))
+      // نقرأ النص أولًا لنتيح تشخيصًا آمنًا عند الاستجابات غير JSON (بوابة/HTML)
+      // دون أي تغيير في سلوك المستخدم أو الرسائل الظاهرة له
+      const raw = await res.text()
+      let data: { error?: string } = {}
+      if (raw) {
+        try {
+          data = JSON.parse(raw) as { error?: string }
+        } catch {
+          // تشخيص للتطوير/المعاينة فقط: استجابة غير JSON غالبًا من طبقة النقل —
+          // يُسجَّل في كونسول المتصفح (جهة التطوير) بلا كلمات مرور ولا أسرار
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `[session-diag] status=${res.status} type=${res.headers.get('content-type') ?? '(none)'} body=${raw.slice(0, 120)}`,
+            )
+          }
+        }
+      }
       if (!res.ok) {
         setError(data.error ?? 'تعذر تسجيل الدخول — تحقق من البيانات')
         return
