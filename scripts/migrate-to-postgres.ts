@@ -15,7 +15,7 @@
 // - ملاحظة: شغّل الترحيل قبل تبديل التطبيق إلى postgres (bun scripts/use-db.ts postgres).
 // - يتحقق من تطابق عدد الصفوف لكل جدول بعد الترحيل.
 
-import { PrismaClient } from '@prisma/client' // عميل التطبيق — يقرأ المصدر SQLite
+import { PrismaClient as SrcClient } from '../.sqlite-client' // عميل قراءة المصدر SQLite — منفصل عن عميل التطبيق (الذي قد يكون postgres-generated)
 import { PrismaClient as PgClient } from '../.pg-client' // عميل الترحيل — يكتب الهدف PostgreSQL
 import { existsSync } from 'fs'
 import { resolve, dirname } from 'path'
@@ -83,10 +83,16 @@ async function main() {
   console.log(`الهدف: ${targetUrl.replace(/\/\/[^@]*@/, '//***@')}`)
 
   // ─── توليد أدوات الترحيل إن لم تكن موجودة ────────────────────
-  if (!existsSync(resolve(ROOT, '.pg-client'))) {
-    console.log('→ توليد أدوات الترحيل (عميل PostgreSQL منفصل عن عميل التطبيق)...')
-    const code = await run(['bun', 'scripts/use-db.ts', 'pg-tools'])
-    if (code !== 0) process.exit(1)
+  if (!existsSync(resolve(ROOT, '.pg-client')) || !existsSync(resolve(ROOT, '.sqlite-client'))) {
+    console.log('→ توليد أدوات الترحيل (عملاء منفصلان عن عميل التطبيق)...')
+    if (!existsSync(resolve(ROOT, '.sqlite-client'))) {
+      const code = await run(['bunx', 'prisma', 'generate', '--schema', 'prisma/schema.sqlite.prisma'])
+      if (code !== 0) process.exit(1)
+    }
+    if (!existsSync(resolve(ROOT, '.pg-client'))) {
+      const code = await run(['bun', 'scripts/use-db.ts', 'pg-tools'])
+      if (code !== 0) process.exit(1)
+    }
   }
 
   // ─── التأكد من وجود مخطط الهدف (إنشاء عبر db push عند اللزوم) ──
@@ -113,7 +119,7 @@ async function main() {
   // لذا نلتزم بترتيب صارم: كل استعلامات المصدر تنفَّذ بـ env=sqlite ثم كل استعلامات
   // الهدف بـ env=postgres — لا تخلط بينهما أبدًا.
   process.env.DATABASE_URL = toSqliteUrl(sqliteFile)
-  const src = new PrismaClient()
+  const src = new SrcClient()
   const batches: { model: string; rows: Record<string, unknown>[] }[] = []
   const sourceCounts: Record<string, number> = {}
   for (const m of MODELS) {

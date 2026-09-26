@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear } from '@/lib/session'
+import { resolveTargetUser, resolveYear, sanitizeInternal } from '@/lib/session'
 
 // الأهداف المهنية
 export async function GET(req: NextRequest) {
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       links: { include: { attachment: true } },
     },
   })
-  return NextResponse.json({ goals, year, readonly: target.id !== me.id })
+  return NextResponse.json(sanitizeInternal({ goals, year, readonly: target.id !== me.id }))
 }
 
 export async function POST(req: NextRequest) {

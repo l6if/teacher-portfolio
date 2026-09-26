@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear, safeJson } from '@/lib/session'
+import { resolveTargetUser, resolveYear, safeJson, sanitizeInternal } from '@/lib/session'
 import { TYPE_SECTION } from '@/lib/constants'
 
 // قائمة الإنجازات مع الفلاتر
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     select: { id: true, title: true },
   })
 
-  return NextResponse.json({ achievements, goals, year, readonly: target.id !== me.id })
+  return NextResponse.json(sanitizeInternal({ achievements, goals, year, readonly: target.id !== me.id }))
 }
 
 // إنشاء إنجاز جديد
@@ -120,5 +120,5 @@ export async function POST(req: NextRequest) {
     where: { id: achievement.id },
     include: { links: { include: { attachment: true } }, goal: true },
   })
-  return NextResponse.json({ achievement: created }, { status: 201 })
+  return NextResponse.json(sanitizeInternal({ achievement: created }), { status: 201 })
 }

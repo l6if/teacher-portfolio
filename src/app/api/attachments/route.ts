@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear, safeJson } from '@/lib/session'
+import { resolveTargetUser, resolveYear, safeJson, sanitizeInternal } from '@/lib/session'
 import { fileKind } from '@/lib/constants'
 
 // مكتبة الشواهد — بحث وفلاتر
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     : linked === 'unlinked' ? attachments.filter((a) => a.links.length === 0)
     : attachments
 
-  return NextResponse.json({ attachments: filtered, year, readonly: target.id !== me.id })
+  return NextResponse.json(sanitizeInternal({ attachments: filtered, year, readonly: target.id !== me.id }))
 }
 
 // إضافة شاهد يدوي (رابط أو ملف مرفوع مسبقًا)
@@ -79,5 +79,5 @@ export async function POST(req: NextRequest) {
       yearId: year.id,
     },
   })
-  return NextResponse.json({ attachment }, { status: 201 })
+  return NextResponse.json(sanitizeInternal({ attachment }), { status: 201 })
 }

@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../.sqlite-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── المستخدمون ───────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  passwordHash String?
+  name      String
+  role      String   @default("TEACHER") // TEACHER | MANAGER
+
+  // البيانات المهنية
+  school          String?
+  subject         String?
+  qualification   String?
+  experienceYears Int?
+  stage           String?
+  classes         String?
+  licenseNumber   String?
+  duties          String?
+  photoUrl        String?
+
+  // بيانات جهة العمل — ترويسة التقرير الرسمي (كلها اختيارية)
+  educationAdmin  String? // الإدارة التعليمية — مثال: إدارة تعليم الرياض
+  educationOffice String? // مكتب التعليم — مثال: مكتب تعليم شمال الرياض
+  principalName   String? // اسم مدير/ة المدرسة — خانة التوقيع في التقرير الرسمي
+
+  // التكليف والنصاب
+  weeklyLoad  Int?
+  schedule    String? // JSON [{day, grade, periods}]
+  committees  String? // JSON [{name, role}]
+  extraDuties String? // JSON [string]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  years       AcademicYear[]
+  goals       Goal[]
+  achievements Achievement[]
+  attachments Attachment[]
+  reflections Reflection[]
+  devPlans    DevPlan[]
+
+  @@index([role])
+}
+
+// ─── السنوات الدراسية ─────────────────────────────────────────
+model AcademicYear {
+  id        String  @id @default(cuid())
+  label     String // "1448هـ"
+  archived  Boolean @default(false)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  goals        Goal[]
+  achievements Achievement[]
+  attachments  Attachment[]
+  reflections  Reflection[]
+  devPlans     DevPlan[]
+
+  @@index([userId])
+  @@index([userId, archived])
+}
+
+// ─── الأهداف المهنية ──────────────────────────────────────────
+model Goal {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  indicator    String?
+  targetValue  Float?
+  currentValue Float?
+  startDate    DateTime?
+  endDate      DateTime?
+  scope        String    @default("YEAR") // YEAR | TERM1 | TERM2
+  userId       String
+  yearId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year         AcademicYear  @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  achievements Achievement[]
+  links        EvidenceLink[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([userId, yearId])
+}
+
+// ─── الإنجاز / الشاهد المهني (الوحدة الأساسية) ────────────────
+model Achievement {
+  id            String    @id @default(cuid())
+  type          String // PRACTICE | REMEDIAL | ENRICHMENT | PD | INITIATIVE | AWARD | PARTICIPATION | CERTIFICATE | ACTIVITY | ASSESSMENT | PLAN | COOP | OTHER
+  title         String
+  field         String? // المجال
+  date          DateTime?
+  description   String? // وصف مختصر
+  goalText      String? // الهدف من الإنجاز
+  execution     String? // ماذا نُفّذ / طريقة التنفيذ
+  beneficiaries String? // الفئة المستفيدة
+  results       String?
+  impact        String?
+  notes         String?
+  problem       String? // المشكلة / الحاجة
+  actions       String? // الإجراءات / مراحل التنفيذ
+  durationText  String? // مدة التنفيذ
+  provider      String? // الجهة (للتدريب)
+  hours         Float? // عدد الساعات
+  studentsCount Int? // عدد الطلاب
+  beneficiariesCount Int? // عدد المستفيدين
+  preScore      Float?
+  postScore     Float?
+  keywords      String?
+  status        String    @default("DRAFT") // DRAFT | COMPLETED | NEEDS_WORK | APPROVED
+  goalId        String?
+  goal          Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  userId        String
+  yearId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year          AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  links         EvidenceLink[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId, yearId])
+  @@index([yearId, type])
+  @@index([goalId])
+  @@index([status])
+}
+
+// ─── الشواهد والمرفقات ────────────────────────────────────────
+model Attachment {
+  id        String   @id @default(cuid())
+  title     String
+  kind      String // IMAGE | PDF | DOC | SHEET | VIDEO | LINK | OTHER
+  fileName  String?
+  fileSize  Int?
+  mimeType  String?
+  url       String?
+  keywords  String?
+  // مسار الملف على القرص للملفات المرفوعة (خارج public — يُقدَّم عبر /api/files بتحقق صلاحيات)
+  storagePath String?
+  createdAt DateTime @default(now())
+  userId    String
+  yearId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year      AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  links     EvidenceLink[]
+
+  @@index([userId, yearId])
+}
+
+// ─── ربط الشاهد بإنجاز أو هدف (إعادة استخدام بدون تكرار) ─────
+model EvidenceLink {
+  id            String      @id @default(cuid())
+  attachmentId  String
+  achievementId String?
+  goalId        String?
+  attachment    Attachment   @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+  achievement   Achievement? @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  goal          Goal?        @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  // منع تكرار الرابط نفسه (الشاهد نفسه مع نفس الإنجاز/الهدف)
+  @@unique([attachmentId, achievementId])
+  @@unique([attachmentId, goalId])
+  @@index([achievementId])
+  @@index([goalId])
+}
+
+// ─── التأمل المهني ────────────────────────────────────────────
+model Reflection {
+  id       String   @id @default(cuid())
+  term     String   @default("TERM1") // TERM1 | TERM2
+  success  String? // أبرز نجاح
+  practice String? // أكثر ممارسة مؤثرة
+  develop  String? // مجال التطوير المرغوب
+  nextTerm String? // ما سأفعله بشكل مختلف
+  userId   String
+  yearId   String
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year     AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, yearId, term])
+  @@index([userId, yearId])
+}
+
+// ─── الخطة التطويرية ──────────────────────────────────────────
+model DevPlan {
+  id        String   @id @default(cuid())
+  goal      String // هدف تطويري
+  action    String? // الإجراء
+  period    String? // الفترة
+  indicator String? // مؤشر النجاح
+  result    String? // النتيجة
+  userId    String
+  yearId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year      AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, yearId])
+}

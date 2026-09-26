@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser, safeJson } from '@/lib/session'
+import { getCurrentUser, safeJson, sanitizeInternal } from '@/lib/session'
 
 // تفاصيل إنجاز واحد
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'لا تملك صلاحية الوصول' }, { status: 403 })
   }
 
-  return NextResponse.json({ achievement })
+  return NextResponse.json(sanitizeInternal({ achievement }))
 }
 
 // تحديث إنجاز (يشمل الحفظ التلقائي للمسودات)
@@ -77,7 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     include: { links: { include: { attachment: true } }, goal: { select: { id: true, title: true } } },
   })
-  return NextResponse.json({ achievement: updated })
+  return NextResponse.json(sanitizeInternal({ achievement: updated }))
 }
 
 // حذف إنجاز (لا تُحذف الشواهد المرتبطة — تبقى في المكتبة)

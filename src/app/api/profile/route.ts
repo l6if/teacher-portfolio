@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser, safeJson } from '@/lib/session'
+import { getCurrentUser, safeJson, toSafeUser } from '@/lib/session'
 
 // البيانات المهنية + التكليف والنصاب
 export async function GET(req: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     target = candidate
   }
 
-  return NextResponse.json({ user: target })
+  return NextResponse.json({ user: toSafeUser(target) })
 }
 
 function target403() {
@@ -47,9 +47,9 @@ export async function PUT(req: NextRequest) {
   }
 
   if (!Object.keys(data).length) {
-    return NextResponse.json({ user: me })
+    return NextResponse.json({ user: toSafeUser(me) })
   }
 
   const updated = await db.user.update({ where: { id: me.id }, data })
-  return NextResponse.json({ user: updated })
+  return NextResponse.json({ user: toSafeUser(updated) })
 }

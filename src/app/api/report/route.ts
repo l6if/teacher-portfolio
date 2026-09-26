@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear } from '@/lib/session'
+import { resolveTargetUser, resolveYear, toSafeUser, sanitizeInternal } from '@/lib/session'
 import { computeCompletion } from '@/lib/progress'
 
 // بيانات التقارير — كل ما تحتاجه واجهة التصدير في استدعاء واحد
@@ -45,15 +45,17 @@ export async function GET(req: NextRequest) {
     computeCompletion(target.id, year.id),
   ])
 
-  return NextResponse.json({
-    user: target,
-    year,
-    goals,
-    achievements,
-    attachments,
-    reflection,
-    devPlans,
-    completion,
-    readonly: target.id !== me.id,
-  })
+  return NextResponse.json(
+    sanitizeInternal({
+      user: toSafeUser(target),
+      year,
+      goals,
+      achievements,
+      attachments,
+      reflection,
+      devPlans,
+      completion,
+      readonly: target.id !== me.id,
+    }),
+  )
 }

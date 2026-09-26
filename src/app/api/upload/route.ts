@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { db } from '@/lib/db'
-import { getCurrentUser, resolveYear } from '@/lib/session'
+import { getCurrentUser, resolveYear, sanitizeInternal } from '@/lib/session'
 import { fileKind } from '@/lib/constants'
 import {
   getStorage,
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
         yearId: year.id,
       },
     })
-    return NextResponse.json({ attachment }, { status: 201 })
+    return NextResponse.json(sanitizeInternal({ attachment }), { status: 201 })
   } catch (e) {
     // فشل إنشاء السجل — نزيل الملف المرفوع حتى لا يبقى يتيمًا
     await storage.remove(path).catch(() => {})

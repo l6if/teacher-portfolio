@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear } from '@/lib/session'
+import { resolveTargetUser, resolveYear, toSafeUser, sanitizeInternal } from '@/lib/session'
 import { computeCompletion, pickRecommendation } from '@/lib/progress'
 
 // بيانات الصفحة الرئيسية
@@ -34,15 +34,17 @@ export async function GET(req: NextRequest) {
     take: 5,
   })
 
-  return NextResponse.json({
-    user: target,
-    year,
-    years,
-    completion,
-    counts: completion.counts,
-    recommendation,
-    recent,
-    drafts,
-    readonly: target.id !== me.id,
-  })
+  return NextResponse.json(
+    sanitizeInternal({
+      user: toSafeUser(target),
+      year,
+      years,
+      completion,
+      counts: completion.counts,
+      recommendation,
+      recent,
+      drafts,
+      readonly: target.id !== me.id,
+    }),
+  )
 }

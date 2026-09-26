@@ -62,7 +62,8 @@ EvidenceLink (M2M): Attachment ↔ Achievement | Goal
 
 ## 5) نظام التخزين (Storage)
 
-- الملفات المرفوعة تُخزَّن في `storage/uploads/<userId>/<attachmentId>.<ext>` — **خارج مجلد `public/`**.
+- بنية المسار الموحدة: `school/user/year/attachment-id/file` — **خارج مجلد `public/`** في كل الأحوال (الأصل اسم ملف عشوائي UUID؛ اسم الملف الأصلي Metadata فقط).
+- مزوّدان بنفس الواجهة: **Supabase Storage** (الإنتاج — حاوية خاصة عبر Service Role من الخادم فقط) و**محلي** (التطوير — `storage/uploads/` بنفس البنية). التقديم حصريًا عبر `/api/files/<attachmentId>` بجلسة + ملكية — لا روابط عامة دائمة أبدًا.
 - تُقدَّم حصريًا عبر `/api/files/<attachmentId>` بجلسة + ملكية، مع `X-Content-Type-Options: nosniff` و`Cache-Control: private`.
 - حماية الرفع: قائمة بيضاء للامتدادات (صور/PDF/Office/جداول/فيديو) + **فحص بصمة المحتوى (magic bytes)** يرفض التنفيذيات وHTML/السكربتات والملفات المتنكرة + حد الحجم (25MB عام، 100MB فيديو) + أسماء تخزين عشوائية.
 - أصول العرض التجريبية القديمة في `public/uploads/` هي ملفات seed ثابتة فقط (للتطوير).
@@ -71,7 +72,13 @@ EvidenceLink (M2M): Attachment ↔ Achievement | Goal
 
 | المتغير | إلزامي؟ | الغرض |
 |---|---|---|
-| `DATABASE_URL` | نعم | SQLite: `file:/abs/path/db/custom.db` — أو PostgreSQL: `postgresql://user:pass@host:5432/teacherfolio` (بعد الترحيل، انظر § 8) |
+| `DATABASE_URL` | نعم | PostgreSQL (التطوير: `postgresql://postgres@127.0.0.1:5433/teacherfolio` — الإنتاج: رابط Supabase التجميعي منفذ 6543) |
+| `DIRECT_URL` | نعم (PG) | اتصال مباشر للمهاجرات (`prisma migrate deploy`) — Supabase: منفذ 5432 |
+| `SUPABASE_URL` | الإنتاج | `https://<ref>.supabase.co` — يفعّل مزوّد Supabase Storage |
+| `SUPABASE_SERVICE_ROLE_KEY` | الإنتاج | ⚠️ مفتاح الخدمة — **جانب الخادم حصرًا**، ممنوع في أي متغير `NEXT_PUBLIC_*` |
+| `SUPABASE_STORAGE_BUCKET` | لا | اسم الحاوية (افتراضي `teacher-evidence`) — يجب أن تكون خاصة (Private) |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `NEXT_PUBLIC_STORAGE_BUCKET` | الإنتاج | لرفع الملفات الكبيرة عبر روابط موقعة (anon العام بالتصميم — لا يمنح قراءة) |
+| `NEXT_PUBLIC_PROXY_UPLOAD_LIMIT_MB` | لا | حد الرفع عبر الوكيل بالـMB (افتراضي 4) — الأكبر يرفع مباشرًا بروابط موقعة |
 | `SESSION_SECRET` | **نعم في الإنتاج** | مفتاح توقيع الجلسات — 32+ حرفًا عشوائيًا (`openssl rand -hex 32`) |
 | `UPLOAD_DIR` | لا | مجلد التخزين (افتراضي `<cwd>/storage/uploads`) — ضعه خارج مجلد البناء في الإنتاج |
 | `UPLOAD_MAX_MB` | لا | حد حجم الملفات العامة (افتراضي 25) |
@@ -86,10 +93,18 @@ EvidenceLink (M2M): Attachment ↔ Achievement | Goal
 
 ```bash
 bun install
-cp .env.example .env            # أو أنشئ .env يدويًا (القيم أعلاه)
-bun run db:push                 # إنشاء/مزامنة الجداول والفهارس
-bun run db:seed                 # (اختياري — تطوير فقط) بيانات تجريبية عربية كاملة
+cp .env.example .env            # ثم اضبط DATABASE_URL/DIRECT_URL على PostgreSQL المحلي
+
+# قاعدة التطوير الحالية (PostgreSQL محلي على 5433 — انظر § 8 للتفاصيل):
+DATABASE_URL="postgresql://postgres@127.0.0.1:5433/teacherfolio" \
+DIRECT_URL="postgresql://postgres@127.0.0.1:5433/teacherfolio" \
+bunx prisma migrate deploy      # ينشئ الجداول من migrations الحقيقية (لا db push)
+
 bun run dev                     # http://localhost:3000
+
+# بيانات تجريبية كاملة (عبر SQLite ثم ترحيل مُتحقق — seed يعمل على SQLite فقط بحكم حماياته):
+#   bun scripts/use-db.ts sqlite && bun run db:seed --reset   (على نسخة تطوير)
+#   ثم bun scripts/migrate-to-postgres.ts <url> + bun scripts/verify-pg-migration.ts <url>
 ```
 
 حسابات seed (تطوير فقط): `sultan@madrasati.sa` (معلم)، `noura@madrasati.sa` (مديرة) — وكلمة المرور `***REMOVED-DEV-SECRET***` (أو قيمة `SEED_PASSWORD`).
@@ -156,6 +171,46 @@ bun scripts/create-user.ts admin@school.sa 'كلمة-مرور-قوية' 'اسم 
 - للعودة إلى SQLite: `bun scripts/use-db.ts sqlite` + `DATABASE_URL=file:...` (عكس كامل مُختبر).
 - عميل الترحيل (`.pg-client`) منفصل عن عميل التطبيق فلا يتعارضان.
 - نفس نماذج البيانات وأسماء الحقول حرفيًا — لا تغيير مخطط إطلاقًا.
+
+### الخيار ج — Supabase + Vercel (البنية الإنتاجية النهائية — جاهز، بانتظار بيانات الاعتماد)
+
+التطبيق الآن PostgreSQL حصريًا (مخطط migrations حقيقي `0001_init`) + طبقة تخزين موحدة (Supabase حاوية خاصة / محلي للتطوير) + تهيئة Vercel جاهزة (`vercel.json`: buildCommand = `prisma generate && prisma migrate deploy && next build`).
+
+**خطوات Supabase:**
+```bash
+# 1) أنشئ مشروعًا على supabase.com ثم من Settings → Database انسخ رابطي الاتصال
+#    DATABASE_URL  = Connection pooling (pgbouncer, منفذ 6543) — للتطبيق
+#    DIRECT_URL    = Direct connection (منفذ 5432) — للمهاجرات
+# 2) شغّل المخطط على قاعدة فارغة (كما اختُبر محليًا — نفس 0001_init):
+DIRECT_URL="<direct-5432>" bunx prisma migrate deploy
+# 3) أنشئ حاوية تخزين خاصة (Storage → New bucket → اسمها teacher-evidence → Private ✔ لا Public أبدًا)
+# 4) من Settings → API: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (خادمي فقط!) + anon key (للعميل)
+```
+
+**خطوات Vercel:**
+```bash
+# 1) اربط المستودع بمشروع Vercel (Framework: Next.js — الإعداد في vercel.json جاهز)
+# 2) أضف متغيرات البيئة (Production + Preview) — كلها في .env.example:
+#    DATABASE_URL, DIRECT_URL, SESSION_SECRET,
+#    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_STORAGE_BUCKET,
+#    NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_STORAGE_BUCKET
+# 3) أول نشر: prisma generate + migrate deploy يجريان ضمن buildCommand تلقائيًا
+# 4) أول مستخدم إنتاجي (بلا seed — مرفوض في الإنتاج أصلًا):
+DATABASE_URL="<pooled-6543>" SESSION_SECRET="<قوية>" \
+  bun scripts/create-user.ts admin@school.sa 'كلمة-مرور-قوية' 'اسم المدير' MANAGER 'اسم المدرسة'
+```
+
+**قواعد ثابتة في هذه البنية:**
+- `SUPABASE_SERVICE_ROLE_KEY` لا يدخل حزمة العميل أبدًا (لا `NEXT_PUBLIC_` معه مطلقًا) — التحقق: كل استخداماته في `src/lib/storage/` خادمية فقط.
+- الملفات لا تُقدَّم بروابط عامة دائمة — `/api/files` وكيل مصادَق (جلسة + ملكية + نطاق المدير)، والرفع الكبير عبر روابط رفع موقعة قصيرة العمر بلا مرور بدالة الخادم.
+- التخزين المحلي يُرفض قاطعًا في الإنتاج (رسالة صريحة مبكرة) — القرص مؤقت في serverless.
+- Vercel بلا قرص دائم: لا UPLOAD_DIR ولا SQLite ولا cache كبيانات دائمة — الأصل دائمًا من Supabase Storage، وذاكرة sharp للقرص مؤقتة فقط (تُبنى تلقائيًا من الأصل).
+
+**ترحيل بيانات موجودة من SQLite إلى Supabase (اختياري — إن أردت نقل بيانات التطوير):**
+```bash
+bun scripts/migrate-to-postgres.ts "<supabase-direct-5432-url>" --from db/custom.db
+bun scripts/verify-pg-migration.ts "<supabase-direct-5432-url>"   # تطابق 100% إلزامي
+```
 
 ملاحظات نشر مهمة:
 - **لا تشغّل `db:seed` في الإنتاج** — يُرفض تلقائيًا أصلًا (انظر أمان seed أعلاه) — أنشئ الحسابات عبر `scripts/create-user.ts`.

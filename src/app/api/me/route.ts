@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser, resolveYear } from '@/lib/session'
+import { getCurrentUser, resolveYear, toSafeUser } from '@/lib/session'
 
 // المستخدم الحالي + سنواته الدراسية
 export async function GET(req: NextRequest) {
@@ -13,5 +13,5 @@ export async function GET(req: NextRequest) {
   })
   const year = await resolveYear(me.id, req.nextUrl.searchParams.get('yearId'))
 
-  return NextResponse.json({ user: me, years, year })
+  return NextResponse.json({ user: toSafeUser(me), years, year })
 }

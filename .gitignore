@@ -52,3 +52,16 @@ prompt
 server.log
 # Skills directory
 /skills/
+# ═══ بنية تحتية محلية — لا تدخل المستودع أبدًا ═══
+# عنقود PostgreSQL المحلي (بيانات تشغيل حية)
+.pg/
+# عملاء Prisma المولَّدون للأدوات
+.pg-client/
+.sqlite-client/
+# ملف قاعدة SQLite + النسخ الاحتياطية (تبقى على القرص — ليست كودًا)
+/db/*.db
+/db/backups/
+# تخزين الملفات المحلي (مرفوعات التطوير)
+/storage/
+# مخرجات المعاينة/التكافؤ
+/download/

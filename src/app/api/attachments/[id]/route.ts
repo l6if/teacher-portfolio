@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser, safeJson } from '@/lib/session'
+import { getCurrentUser, safeJson, sanitizeInternal } from '@/lib/session'
 import { getStorage } from '@/lib/storage'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'الرابط يجب أن يبدأ بـ http أو https' }, { status: 400 })
   }
   const attachment = await db.attachment.update({ where: { id }, data })
-  return NextResponse.json({ attachment })
+  return NextResponse.json(sanitizeInternal({ attachment }))
 }
 
 /**

@@ -47,11 +47,33 @@ async function main() {
   ok('رفع صورة JPEG عبر الوكيل', up.status === 201 && !!upData?.attachment?.id, `status=${up.status}`)
   const att = upData?.attachment
   if (att) {
-    const expectPrefixPattern = /\/[^/]+\/[^/]+\/[^/]+\/[^/]+\/[^/]+\.(jpg|jpeg)$/ // school/user/year/id/file.ext
-    ok('بنية المسار school/user/year/attachment-id/file', expectPrefixPattern.test('/' + att.storagePath), att.storagePath)
+    // العقد الأمني (إصلاح 2026-09-27): storagePath مسار داخلي لا يغادر الخادم أبدًا
+    ok('storagePath لا يظهر في استجابة الرفع (عقد أمني)', !('storagePath' in att))
     ok('الاسم الأصلي محفوظ Metadata', att.fileName === 'اختبار-التدفق.jpg')
     ok('mimeType من القائمة البيضاء', att.mimeType === 'image/jpeg')
     ok('fileSize مسجل', att.fileSize === bigJpeg.length, `${att.fileSize} bytes`)
+
+    // بنية المسار school/user/year/attachment-id/file — تُتحقق من جهة القرص
+    // (مزوّد التطوير المحلي يكتب تحت storage/uploads بنفس بنية مسارات الإنتاج)
+    const { readdir } = await import('fs/promises')
+    const { join } = await import('path')
+    async function walk(dir: string, base = ''): Promise<string[]> {
+      const out: string[] = []
+      let entries: import('fs').Dirent[]
+      try { entries = await readdir(dir, { withFileTypes: true }) } catch { return out }
+      for (const e of entries) {
+        const rel = base ? `${base}/${e.name}` : e.name
+        if (e.isDirectory()) out.push(...(await walk(join(dir, e.name), rel)))
+        else if (e.isFile()) out.push(rel)
+      }
+      return out
+    }
+    const upRoot = process.env.UPLOAD_DIR || join(process.cwd(), 'storage', 'uploads')
+    const allFiles = await walk(upRoot)
+    const mine = allFiles.filter((f) => f.includes(`/${att.id}/`))
+    ok('بنية المسار school/user/year/attachment-id/file (تحقق قرصي)',
+      mine.length === 1 && new RegExp('\\/[^/]+\\/[^/]+\\/[^/]+\\/[^/]+\\/[^/]+\\.(jpg|jpeg)$').test('/' + mine[0]),
+      mine[0] ?? 'لم يُعثر على الملف')
 
     // ── 3) التقديم الأصلي ──
     const raw = await fetch(`${BASE}/api/files/${att.id}`, { headers: { cookie: s.cookie } })
@@ -121,7 +143,35 @@ async function main() {
     const del2 = await fetch(`${BASE}/api/attachments/${att2.id}`, { method: 'DELETE', headers: { cookie: s.cookie } })
     const del2Data = await del2.json().catch(() => null)
     ok('حذف شاهد متعدد الاستخدام → الملف محتفظ به', del2Data?.fileRemoved === false && del2Data?.fileKeptReason === 'multi-use', `reason=${del2Data?.fileKeptReason}`)
-    // تنظيف: حذف اليتيم عبر الدكتور لاحقًا — هنا نحذفه يدويًا لأن الدكتور عملية منفصلة
+    // بقايا ملف 7-ب اليتيمة تنظَّف عبر scripts/storage-doctor.ts --clean (الأداة المخصصة لذلك)
+
+    // ── 8) فك الربط (unlink) + دورة حياة نظيفة كاملة ──
+    const fd6 = new FormData()
+    fd6.append('file', new File([new Uint8Array(bigJpeg)], 'دورة-كاملة.jpg', { type: 'image/jpeg' }))
+    fd6.append('yearId', yearId)
+    const up3 = await fetch(`${BASE}/api/upload`, { method: 'POST', headers: { cookie: s.cookie }, body: fd6 })
+    const att3 = (await up3.json()).attachment
+    ok('رفع شاهد دورة الحياة', up3.status === 201 && !!att3?.id)
+    const link = (attachmentId: string, achievementId: string, action?: string) =>
+      fetch(`${BASE}/api/attachments/link`, {
+        method: 'POST', headers: { cookie: s.cookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ attachmentId, achievementId, ...(action ? { action } : {}) }),
+      }).then((r) => r.json())
+    const ids3 = achievements.achievements.slice(0, 2).map((x: any) => x.id)
+    const l1 = await link(att3.id, ids3[0])
+    const l2 = await link(att3.id, ids3[1])
+    ok('ربط الشاهد بإنجازين → رابطان', (l1?.links?.length ?? 0) === 1 && (l2?.links?.length ?? 0) === 2)
+    const dup = await link(att3.id, ids3[0])
+    ok('ربط مكرر → لا تكرار (idempotent)', (dup?.links?.length ?? 0) === 2)
+    const u1 = await link(att3.id, ids3[0], 'remove')
+    ok('فك ربط الشاهد من إنجاز → بقي رابط واحد', (u1?.links?.length ?? 0) === 1)
+    const u2 = await link(att3.id, ids3[1], 'remove')
+    ok('فك الرابط الأخير → صفر روابط', (u2?.links?.length ?? 0) === 0)
+    const del3 = await fetch(`${BASE}/api/attachments/${att3.id}`, { method: 'DELETE', headers: { cookie: s.cookie } })
+    const del3Data = await del3.json().catch(() => null)
+    ok('حذف شاهد بلا روابط → الملف حُذف (لا يتيمة)', del3Data?.fileRemoved === true)
+    const gone3 = await fetch(`${BASE}/api/files/${att3.id}`, { headers: { cookie: s.cookie } })
+    ok('الملف لم يعد متاحاً بعد دورة الحياة', gone3.status === 404)
   }
 
   console.log(`\n═══ النتيجة: ${passed} ناجح / ${failed} فاشل ═══`)
