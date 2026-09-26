@@ -18,6 +18,48 @@ import { toast } from 'sonner'
 import type { TAttachment } from '@/lib/types'
 import { ATTACHMENT_KINDS } from '@/lib/constants'
 
+// ─── بنية الرفع: وكيل أم رفع مباشر موقّع (ملفات كبيرة، بيئة Supabase) ──
+const PROXY_LIMIT_BYTES =
+  Number(process.env.NEXT_PUBLIC_PROXY_UPLOAD_LIMIT_MB || 4) * 1024 * 1024
+const SUPABASE_PUB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_PUB_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const STORAGE_BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET || 'teacher-evidence'
+
+/**
+ * رفع ملف كبير عبر رابط موقّع قصير العمر مباشرة إلى التخزين —
+ * لا يمر عبر دالة الخادم (تجاوزًا لحدود جسم الطلب في serverless).
+ * يعيد null إذا كان الوضع المحلي (لا دعم للرفع الموقّع) فيعود الطلب لمسار الوكيل.
+ * التحقق النهائي من البصمة والحجم يبقى في الخادم (/api/upload/complete).
+ */
+async function uploadLargeFile(file: File, yearId: string | null): Promise<TAttachment | null> {
+  const res = await fetch('/api/upload/direct', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileName: file.name, mimeType: file.type || undefined, size: file.size, yearId }),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok || !data || data.mode !== 'direct') return null
+  if (!SUPABASE_PUB_URL || !SUPABASE_PUB_ANON) return null
+
+  const { StorageClient } = await import('@supabase/storage-js')
+  const storage = new StorageClient(`${SUPABASE_PUB_URL}/storage/v1`, { apikey: SUPABASE_PUB_ANON })
+  const { error } = await storage
+    .from(STORAGE_BUCKET)
+    .uploadToSignedUrl(data.path, data.token, file, {
+      contentType: file.type || 'application/octet-stream',
+    })
+  if (error) throw new Error(error.message)
+
+  const done = await fetch('/api/upload/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ attachmentId: data.attachmentId, fileName: file.name, yearId }),
+  })
+  const dd = await done.json().catch(() => null)
+  if (!done.ok || !dd) throw new Error(dd?.error ?? file.name)
+  return dd.attachment as TAttachment
+}
+
 /** حوار إضافة رابط */
 function AddLinkDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenChange: (v: boolean) => void; onAdded: (a: TAttachment) => void }) {
   const { yearId } = useScope()
@@ -201,6 +243,15 @@ export function AttachmentsEditor({
     const failed: string[] = []
     for (const file of list) {
       try {
+        // الملفات الكبيرة: مسار الرفع المباشر الموقّع (يعود للوكيل محليًا تلقائيًا)
+        if (file.size > PROXY_LIMIT_BYTES) {
+          const direct = await uploadLargeFile(file, yearId)
+          if (direct) {
+            added.push(direct)
+            setUploadProgress((p) => ({ ...p, done: p.done + 1 }))
+            continue
+          }
+        }
         const fd = new FormData()
         fd.append('file', file)
         if (yearId) fd.append('yearId', yearId)

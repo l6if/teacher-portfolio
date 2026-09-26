@@ -5,9 +5,10 @@
 //   bun scripts/use-db.ts pg-tools  → يشتق prisma/schema.pg.prisma ويولّد عميل ترحيل منفصل (.pg-client)
 //
 // ملاحظات:
-// - لا يغيّر أي نموذج أو حقل — يبدّل سطر المزوّد فقط (ضرورة ترحيل حصرية).
+// - لا يغيّر أي نموذج أو حقل — يبدّل سطر المزوّد وسطر directUrl فقط (ضرورة ترحيل حصرية).
 // - عميل الترحيل (.pg-client) منفصل تمامًا عن عميل التطبيق فلا يتعارضان.
-// - بعد التبديل اضبط DATABASE_URL في .env وفق المزوّد (انظر README قسم 8).
+// - PostgreSQL هو مزوّد الإنتاج الملتزم (Supabase) — SQLite للنسخ الاحتياطي والتجربة المحلية فقط.
+// - بعد التبديل اضبط DATABASE_URL (و DIRECT_URL للـ postgres) في .env وأعد تشغيل الخادم.
 
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
@@ -22,12 +23,30 @@ type Mode = 'sqlite' | 'postgres' | 'pg-tools'
 
 const SQLITE_LINE = 'provider = "sqlite"'
 const POSTGRES_LINE = 'provider = "postgresql"'
+const DIRECT_URL_LINE = '  directUrl = env("DIRECT_URL")'
 
 function readSchema(): string {
   return readFileSync(SCHEMA, 'utf8')
 }
 
-/** يضبط سطر المزوّد في schema.prisma الرئيسي دون لمس أي شيء آخر */
+/** إزالة سطر directUrl إن وُجد (وضع SQLite — لا معنى له ويمنع أي استهداف عرضي) */
+function stripDirectUrl(src: string): string {
+  return src
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('directUrl'))
+    .join('\n')
+}
+
+/** إضافة سطر directUrl بعد url إن لم يوجد (وضع PostgreSQL — للمهاجرات عبر اتصال مباشر) */
+function ensureDirectUrl(src: string): string {
+  if (src.split('\n').some((l) => l.trim().startsWith('directUrl'))) return src
+  return src.replace(
+    /(\s*url\s*=\s*env\("DATABASE_URL"\))/,
+    `$1\n${DIRECT_URL_LINE}`,
+  )
+}
+
+/** يضبط سطر المزوّد (وسطر directUrl) في schema.prisma الرئيسي دون لمس أي شيء آخر */
 function setProvider(target: 'sqlite' | 'postgresql'): string {
   const src = readSchema()
   let out: string
@@ -39,20 +58,24 @@ function setProvider(target: 'sqlite' | 'postgresql'): string {
     console.error('⛔ لم أجد سطر المزوّد في prisma/schema.prisma — راجع الملف يدويًا.')
     process.exit(1)
   }
+  // directUrl: موجود مع postgresql فقط (اتصال مباشر للمهاجرات — Supabase DIRECT_URL)
+  if (target === 'postgresql') out = ensureDirectUrl(out)
+  else out = stripDirectUrl(out)
   if (out === src) {
     console.log(`ℹ المزوّد مطابق بالفعل: ${target === 'sqlite' ? 'sqlite' : 'postgresql'}`)
     return src
   }
   writeFileSync(SCHEMA, out)
-  console.log(`✓ تم ضبط المزوّد في prisma/schema.prisma → ${target}`)
+  console.log(`✓ تم ضبط المزوّد في prisma/schema.prisma → ${target}${target === 'postgresql' ? ' (+ directUrl للمهاجرات)' : ' (بلا directUrl)'}`)
   return out
 }
 
 /** يشتق prisma/schema.pg.prisma من المخطط الرئيسي (نفس النماذج حرفيًا) مع مخرج عميل منفصل */
 function derivePgSchema(): void {
   let src = readSchema()
-  // 1) المزوّد → postgresql (إن كان sqlite)
+  // 1) المزوّد → postgresql (إن كان sqlite) + ضمان directUrl
   if (src.includes(SQLITE_LINE)) src = src.replace(SQLITE_LINE, POSTGRES_LINE)
+  src = ensureDirectUrl(src)
   // 2) عميل الترحيل بمخرج منفصل حتى لا يمس عميل التطبيق
   const derived = src.replace(
     'generator client {\n  provider = "prisma-client-js"\n}',
@@ -63,7 +86,7 @@ function derivePgSchema(): void {
     console.error('⛔ تعذّر اشتقاق prisma/schema.pg.prisma — تأكد أن كتلة generator client بالشكل القياسي.')
     process.exit(1)
   }
-  console.log('✓ اشتُق prisma/schema.pg.prisma (نفس النماذج + مزوّد postgresql + مخرج .pg-client)')
+  console.log('✓ اشتُق prisma/schema.pg.prisma (نفس النماذج + مزوّد postgresql + directUrl + مخرج .pg-client)')
 }
 
 function run(cmd: string[], env?: Record<string, string>): Promise<number> {
@@ -103,8 +126,9 @@ async function main() {
   console.log('')
   console.log('═══ الخطوة التالية ═══')
   if (target === 'postgresql') {
-    console.log('اضبط في .env:  DATABASE_URL="postgresql://user:pass@host:5432/teacherfolio"')
-    console.log('ثم انقل بياناتك:  bun scripts/migrate-to-postgres.ts "postgresql://user:pass@host:5432/teacherfolio"')
+    console.log('اضبط في .env:  DATABASE_URL="postgresql://user:pass@host:5432/db"  و DIRECT_URL="postgresql://user:pass@host:5432/db"')
+    console.log('في Supabase: DATABASE_URL = التجميعي (منفذ 6543) و DIRECT_URL = المباشر (منفذ 5432)')
+    console.log('ثم انقل بياناتك:  bun scripts/migrate-to-postgres.ts "postgresql://user:pass@host:5432/db"')
   } else {
     console.log('اضبط في .env:  DATABASE_URL="file:/abs/path/db/custom.db"')
   }

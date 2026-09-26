@@ -1,19 +1,6 @@
-// ─── نظام التخزين الآمن للشواهد ───────────────────────────────
-// الملفات المرفوعة تُخزَّن خارج مجلد public — لا يمكن الوصول إليها برابط مباشر،
-// بل تُقدَّم حصريًا عبر /api/files/<id> بعد التحقق من الجلسة والملكية.
-
-import { createReadStream } from 'fs'
-import { mkdir, stat, unlink, writeFile } from 'fs/promises'
-import { Readable } from 'stream'
-import path from 'path'
-
-const DEFAULT_UPLOAD_DIR = path.join(process.cwd(), 'storage', 'uploads')
-
-export function uploadDir(): string {
-  return process.env.UPLOAD_DIR || DEFAULT_UPLOAD_DIR
-}
-
-// ─── القائمة البيضاء: امتداد → نوع عائلة ──────────────────────
+// ─── تحققات رفع الملفات — منقولة حرفيًا كما كانت (حمايات مجمّدة) ──
+// القائمة البيضاء + فحص البصمة magic bytes + حدود الحجم.
+// لم تتغير أي قاعدة — النقل فقط إلى وحدة مستقلة ضمن طبقة التخزين.
 
 export interface AllowedType {
   ext: string
@@ -44,6 +31,14 @@ const ALLOWED: AllowedType[] = [
 
 export const MAX_DOC_MB = Number(process.env.UPLOAD_MAX_MB || 25)
 export const MAX_VIDEO_MB = Number(process.env.UPLOAD_VIDEO_MAX_MB || 100)
+
+/**
+ * حد الرفع عبر الوكيل (proxy) داخل دالة الخادم — فوقه يلزم الرفع المباشر الموقّع.
+ * حدود Vercel Functions لجسم الطلب ≈ 4.5MB؛ نترك هامش أمان (الافتراضي 4MB).
+ * في وضع التخزين المحلي (تطوير/اختبار) يُستخدم دائمًا مسار الوكيل.
+ */
+export const PROXY_UPLOAD_LIMIT_MB = Number(process.env.PROXY_UPLOAD_LIMIT_MB || 4)
+export const PROXY_UPLOAD_LIMIT_BYTES = PROXY_UPLOAD_LIMIT_MB * 1024 * 1024
 
 /** التحقق من الامتداد مقابل القائمة البيضاء */
 export function checkExtension(fileName: string): AllowedType | null {
@@ -78,42 +73,7 @@ export function checkMagicBytes(buf: Buffer, allowed: AllowedType): boolean {
   }
 }
 
-/** حفظ الملف باسم عشوائي آمن تحت مجلد المستخدم — يعيد المسار النسبي */
-export async function storeFile(userId: string, id: string, ext: string, data: Buffer): Promise<string> {
-  const rel = path.join(userId, `${id}.${ext}`)
-  const abs = path.join(uploadDir(), rel)
-  await mkdir(path.dirname(abs), { recursive: true })
-  await writeFile(abs, data)
-  return rel
-}
-
-/** تدفق ملف للقراءة (بث مباشر دون تحميل كامل في الذاكرة) */
-export function fileStream(rel: string): ReadableStream<Uint8Array> | null {
-  const abs = path.join(uploadDir(), rel)
-  // حماية من path traversal — المسار النسبي يُخزَّن منينا ولا يقبل اجتياز مجلدات
-  if (rel.includes('..') || path.isAbsolute(rel)) return null
-  const nodeStream = createReadStream(abs)
-  return Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>
-}
-
-export async function fileSize(rel: string): Promise<number | null> {
-  try {
-    const abs = path.join(uploadDir(), rel)
-    if (rel.includes('..') || path.isAbsolute(rel)) return null
-    const s = await stat(abs)
-    return s.isFile() ? s.size : null
-  } catch {
-    return null
-  }
-}
-
-/** حذف الملف من القرص عند حذف الشاهد */
-export async function deleteFile(rel: string | null | undefined): Promise<void> {
-  if (!rel) return
-  if (rel.includes('..') || path.isAbsolute(rel)) return
-  try {
-    await unlink(path.join(uploadDir(), rel))
-  } catch {
-    // الملف غير موجود — لا مشكلة
-  }
+/** حد الحجم حسب النوع (فيديو أم مستند) */
+export function sizeLimitBytes(kindVideo: boolean): number {
+  return (kindVideo ? MAX_VIDEO_MB : MAX_DOC_MB) * 1024 * 1024
 }
