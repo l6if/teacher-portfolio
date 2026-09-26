@@ -11,6 +11,7 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
+  passwordHash String?
   name      String
   role      String   @default("TEACHER") // TEACHER | MANAGER
 
@@ -40,6 +41,8 @@ model User {
   attachments Attachment[]
   reflections Reflection[]
   devPlans    DevPlan[]
+
+  @@index([role])
 }
 
 // ─── السنوات الدراسية ─────────────────────────────────────────
@@ -56,6 +59,9 @@ model AcademicYear {
   attachments  Attachment[]
   reflections  Reflection[]
   devPlans     DevPlan[]
+
+  @@index([userId])
+  @@index([userId, archived])
 }
 
 // ─── الأهداف المهنية ──────────────────────────────────────────
@@ -77,6 +83,8 @@ model Goal {
   links        EvidenceLink[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+
+  @@index([userId, yearId])
 }
 
 // ─── الإنجاز / الشاهد المهني (الوحدة الأساسية) ────────────────
@@ -113,6 +121,11 @@ model Achievement {
   links         EvidenceLink[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  @@index([userId, yearId])
+  @@index([yearId, type])
+  @@index([goalId])
+  @@index([status])
 }
 
 // ─── الشواهد والمرفقات ────────────────────────────────────────
@@ -125,12 +138,16 @@ model Attachment {
   mimeType  String?
   url       String?
   keywords  String?
+  // مسار الملف على القرص للملفات المرفوعة (خارج public — يُقدَّم عبر /api/files بتحقق صلاحيات)
+  storagePath String?
   createdAt DateTime @default(now())
   userId    String
   yearId    String
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   year      AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
   links     EvidenceLink[]
+
+  @@index([userId, yearId])
 }
 
 // ─── ربط الشاهد بإنجاز أو هدف (إعادة استخدام بدون تكرار) ─────
@@ -142,6 +159,12 @@ model EvidenceLink {
   attachment    Attachment   @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
   achievement   Achievement? @relation(fields: [achievementId], references: [id], onDelete: Cascade)
   goal          Goal?        @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  // منع تكرار الرابط نفسه (الشاهد نفسه مع نفس الإنجاز/الهدف)
+  @@unique([attachmentId, achievementId])
+  @@unique([attachmentId, goalId])
+  @@index([achievementId])
+  @@index([goalId])
 }
 
 // ─── التأمل المهني ────────────────────────────────────────────
@@ -159,6 +182,7 @@ model Reflection {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, yearId, term])
+  @@index([userId, yearId])
 }
 
 // ─── الخطة التطويرية ──────────────────────────────────────────
@@ -174,4 +198,6 @@ model DevPlan {
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   year      AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([userId, yearId])
 }

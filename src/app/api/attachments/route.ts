@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear } from '@/lib/session'
+import { resolveTargetUser, resolveYear, safeJson } from '@/lib/session'
 import { fileKind } from '@/lib/constants'
 
 // مكتبة الشواهد — بحث وفلاتر
@@ -57,11 +57,12 @@ export async function POST(req: NextRequest) {
   if (!me || !target || target.id !== me.id) {
     return NextResponse.json({ error: 'لا يمكنك التعديل على ملف غيرك' }, { status: 403 })
   }
-  const body = await req.json()
+  const body = await safeJson(req)
+  if (!body) return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 })
   const year = await resolveYear(me.id, body.yearId)
   if (!year) return NextResponse.json({ error: 'لا توجد سنة دراسية' }, { status: 400 })
 
-  if (body.kind === 'LINK' && !body.url?.startsWith('http')) {
+  if (body.kind === 'LINK' && !/^https?:\/\//.test(String(body.url ?? ''))) {
     return NextResponse.json({ error: 'الرجاء إدخال رابط صحيح يبدأ بـ http' }, { status: 400 })
   }
 

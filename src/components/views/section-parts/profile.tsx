@@ -159,7 +159,7 @@ export function ProfileSection({ readonly }: { readonly: boolean }) {
         {PROFILE_FIELDS.map((f) => (
           <div key={f.key} className="rounded-2xl border border-border bg-card p-4">
             <p className="text-[11px] text-muted-foreground">{f.label}</p>
-            <p className="mt-1.5 text-sm font-medium leading-6 text-foreground">{(user as unknown as Record<string, unknown>)?.[f.key] || '—'}</p>
+            <p className="mt-1.5 text-sm font-medium leading-6 text-foreground">{String((user as unknown as Record<string, unknown>)?.[f.key] ?? '') || '—'}</p>
           </div>
         ))}
       </div>

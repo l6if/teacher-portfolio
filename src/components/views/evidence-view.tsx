@@ -35,11 +35,9 @@ export function EvidenceView() {
       ? `هذا الشاهد مرتبط بـ ${linksCount} عنصر. حذفه يزيله من كل العناصر المرتبطة.\nهل تريد حذفه نهائيًا؟`
       : 'هل تريد حذف هذا الشاهد نهائيًا؟'
     if (!confirm(msg)) return
+    // حذف الشاهد من الخادم يزيل روابطه وملفه المرفوع من القرص معًا
     const res = await fetch(`/api/attachments/${a.id}`, { method: 'DELETE' })
     if (res.ok) {
-      if (a.url?.startsWith('/uploads/')) {
-        fetch(`/api/upload?url=${encodeURIComponent(a.url)}`, { method: 'DELETE' }).catch(() => {})
-      }
       await qc.invalidateQueries()
       toast.success('تم حذف الشاهد من المكتبة')
     } else toast.error('تعذر الحذف')

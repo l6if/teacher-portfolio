@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/session'
+import { getCurrentUser, safeJson } from '@/lib/session'
 
 // تفاصيل إنجاز واحد
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +35,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'لا يمكنك تعديل إنجاز غيرك' }, { status: 403 })
   }
 
-  const body = await req.json()
+  const body = await safeJson(req)
+  if (!body) return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 })
   const { attachmentIds, ...rest } = body
   const num = (v: unknown) => (v === '' || v === null || v === undefined ? null : Number(v))
 

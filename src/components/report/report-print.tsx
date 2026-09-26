@@ -6,7 +6,7 @@ import { useReport } from '@/hooks/use-data'
 import { SECTIONS, SECTION_MAP, TYPE_LABEL, STATUS_LABEL } from '@/lib/constants'
 import { formatDate, formatNumber, improvement } from '@/lib/format'
 import { LoadingState, ErrorState } from '@/components/shared/states'
-import type { TAchievement } from '@/lib/types'
+import type { TAchievement, TAttachment } from '@/lib/types'
 
 /* ألوان الطباعة الثابتة */
 const C = {
@@ -34,7 +34,7 @@ function FieldRow({ label, value }: { label: string; value?: string | null }) {
 /** بطاقة إنجاز داخل التقرير */
 function AchievementBlock({ a }: { a: TAchievement }) {
   const attachments = a.attachments ?? []
-  const images = attachments.filter((x) => x.kind === 'IMAGE' && x.url)
+  const images = attachments.filter((x): x is TAttachment & { url: string } => x.kind === 'IMAGE' && Boolean(x.url))
   const files = attachments.filter((x) => x.kind !== 'IMAGE')
   const diff = improvement(a.preScore, a.postScore)
 

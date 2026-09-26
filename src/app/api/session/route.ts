@@ -1,26 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { SESSION_COOKIE } from '@/lib/session'
+import { getCurrentUser, SESSION_COOKIE, safeJson } from '@/lib/session'
+import { createSessionToken, verifyPassword, SESSION_MAX_AGE } from '@/lib/auth'
 
-// اختيار حساب تجريبي للجلسة (المعلم أو المدير)
+/**
+ * المصادقة الحقيقية: دخول بالبريد وكلمة المرور فقط.
+ * لا قائمة مستخدمين عامة — لا يمكن معرفة من المسجلين في النظام دون تسجيل دخول.
+ */
 export async function GET() {
-  const users = await db.user.findMany({
-    select: { id: true, name: true, role: true, subject: true, school: true },
-    orderBy: { createdAt: 'asc' },
+  const me = await getCurrentUser()
+  if (!me) return NextResponse.json({ user: null })
+  return NextResponse.json({
+    user: { id: me.id, name: me.name, email: me.email, role: me.role },
   })
-  return NextResponse.json({ users })
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await req.json()
-  const user = await db.user.findUnique({ where: { id: userId } })
-  if (!user) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 })
-  const res = NextResponse.json({ ok: true, user: { id: user.id, name: user.name, role: user.role } })
-  res.cookies.set(SESSION_COOKIE, user.id, {
+  const body = await safeJson<{ email?: string; password?: string }>(req)
+  const email = body?.email?.trim().toLowerCase()
+  const password = body?.password ?? ''
+
+  if (!email || !password) {
+    return NextResponse.json({ error: 'أدخل البريد الإلكتروني وكلمة المرور' }, { status: 400 })
+  }
+
+  const user = await db.user.findUnique({ where: { email } })
+  // رسالة موحدة دوماً — لا نكشف هل البريد موجود من عدمه
+  const invalid = NextResponse.json({ error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' }, { status: 401 })
+  if (!user) return invalid
+  if (!verifyPassword(password, user.passwordHash)) return invalid
+
+  const res = NextResponse.json({
+    ok: true,
+    user: { id: user.id, name: user.name, role: user.role },
+  })
+  res.cookies.set(SESSION_COOKIE, createSessionToken(user.id), {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_MAX_AGE,
   })
   return res
 }

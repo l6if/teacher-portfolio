@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear } from '@/lib/session'
+import { resolveTargetUser, resolveYear, safeJson } from '@/lib/session'
 
 // الخطة التطويرية
 export async function GET(req: NextRequest) {
@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
   if (!me || !target || target.id !== me.id) {
     return NextResponse.json({ error: 'لا يمكنك التعديل على ملف غيرك' }, { status: 403 })
   }
-  const body = await req.json()
+  const body = await safeJson(req)
+  if (!body) return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 })
   const year = await resolveYear(me.id, body.yearId)
   if (!year) return NextResponse.json({ error: 'لا توجد سنة دراسية' }, { status: 400 })
 

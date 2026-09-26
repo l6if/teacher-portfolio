@@ -11,8 +11,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'هذه الصفحة متاحة للمدير فقط' }, { status: 403 })
   }
 
+  // نطاق المدير: إن كانت له مدرسة فلا يرى إلا معلميها (المشرف بلا مدرسة يرى الكل)
   const teachers = await db.user.findMany({
-    where: { role: 'TEACHER' },
+    where: { role: 'TEACHER', ...(me.school ? { school: me.school } : {}) },
     orderBy: { name: 'asc' },
   })
 

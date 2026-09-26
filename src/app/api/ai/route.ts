@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/session'
+import { getCurrentUser, safeJson } from '@/lib/session'
 
 // مساعدات ذكية محدودة: تحسين الصياغة — اقتراح أثر — تلخيص الإنجاز
 // لا تُ invented بيانات: تعمل فقط على نص أدخله المستخدم
@@ -7,8 +7,8 @@ export async function POST(req: NextRequest) {
   const me = await getCurrentUser()
   if (!me) return NextResponse.json({ error: 'غير مسجل الدخول' }, { status: 401 })
 
-  const { mode, text } = await req.json()
-  const input = (text ?? '').toString().trim()
+  const body = await safeJson<{ mode?: string; text?: string }>(req)
+  const input = (body?.text ?? '').toString().trim()
   if (!input || input.length < 3) {
     return NextResponse.json({ error: 'اكتب نصًا أولًا حتى أستطيع مساعدتك.' }, { status: 400 })
   }
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     impact: 'أنت مساعد مهني لمعلم. بناءً على الوصف التالي فقط، صِغ فقرة "أثر مهني" واقعية من جملة إلى جملتين دون اختلاق أرقام أو نتائج غير مذكورة. أعِد الأثر فقط دون مقدمات.',
     summarize: 'أنت مساعد تحرير عربي. لخص النص التالي في سطر أو سطرين بأسلوب مهني موجز دون إضافة معلومات جديدة. أعِد الملخص فقط دون مقدمات.',
   }
-  const system = prompts[mode] ?? prompts.improve
+  const system = prompts[body?.mode ?? 'improve'] ?? prompts.improve
 
   try {
     const { default: ZAI } = await import('z-ai-web-dev-sdk')

@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    // الأنواع تُفحص صراحة عبر `bun run typecheck` — والبناء يرفض أي خطأ
+    ignoreBuildErrors: false,
   },
   reactStrictMode: false,
 };

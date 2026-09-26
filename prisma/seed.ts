@@ -1,7 +1,11 @@
-// بيانات تجريبية غنية — ملف إنجاز المعلم الإلكتروني
+// بيانات تجريبية غنية — للتطوير فقط، لا تُشغّل في الإنتاج أبدًا (انظر README)
 import { PrismaClient } from '@prisma/client'
+import { hashPassword } from '../src/lib/auth'
 
 const db = new PrismaClient()
+
+// كلمة مرور موحدة لجميع حسابات التطوير التجريبية
+const DEV_PASSWORD = process.env.SEED_PASSWORD || '***REMOVED-DEV-SECRET***'
 
 const now = new Date()
 const daysAgo = (n) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000)
@@ -26,6 +30,7 @@ async function main() {
   const sultan = await db.user.create({
     data: {
       email: 'sultan@madrasati.sa',
+      passwordHash: hashPassword(DEV_PASSWORD),
       name: 'سلطان بن حمد الحربي',
       role: 'TEACHER',
       school: 'متوسطة الملك عبدالعزيز',
@@ -60,6 +65,7 @@ async function main() {
   const noura = await db.user.create({
     data: {
       email: 'noura@madrasati.sa',
+      passwordHash: hashPassword(DEV_PASSWORD),
       name: 'نورة القحطاني',
       role: 'MANAGER',
       school: 'متوسطة الملك عبدالعزيز',
@@ -70,6 +76,7 @@ async function main() {
   const ahmed = await db.user.create({
     data: {
       email: 'ahmed@madrasati.sa',
+      passwordHash: hashPassword(DEV_PASSWORD),
       name: 'أحمد الشمري',
       role: 'TEACHER',
       school: 'متوسطة الملك عبدالعزيز',
@@ -85,6 +92,7 @@ async function main() {
   const fatimah = await db.user.create({
     data: {
       email: 'fatimah@madrasati.sa',
+      passwordHash: hashPassword(DEV_PASSWORD),
       name: 'فاطمة الزهراني',
       role: 'TEACHER',
       school: 'متوسطة الملك عبدالعزيز',
@@ -106,6 +114,7 @@ async function main() {
   const khaled = await db.user.create({
     data: {
       email: 'khaled@madrasati.sa',
+      passwordHash: hashPassword(DEV_PASSWORD),
       name: 'خالد العتيبي',
       role: 'TEACHER',
       school: 'متوسطة الملك عبدالعزيز',
@@ -399,7 +408,7 @@ async function main() {
     keywords: 'تقنية، منصة، رقمي',
     status: 'NEEDS_WORK', userId: sultan.id, yearId: y1448.id,
   })
-  await link(linkPlatform, (await db.achievement.findFirst({ where: { title: 'دمج التقنية التعليمية عبر منصة مدرستي' } })).id)
+  await link(linkPlatform, (await db.achievement.findFirstOrThrow({ where: { title: 'دمج التقنية التعليمية عبر منصة مدرستي' } })).id)
 
   const assessDiag = await A({
     type: 'ASSESSMENT', title: 'الاختبار التشخيصي لمهارة القراءة وتحليل النتائج',

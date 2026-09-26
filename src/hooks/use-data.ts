@@ -15,11 +15,12 @@ async function j<T>(url: string): Promise<T> {
 
 /** تحويل روابط الشواهد إلى مصفوفة مرفقات على كل إنجاز */
 function withAttachments<T extends { links?: { attachment?: unknown }[] }>(raw: T): T & { attachments: unknown[] } {
-  return { ...raw, attachments: (raw.links ?? []).map((l) => l.attachment).filter(Boolean) }
+  return { ...raw, attachments: (raw.links ?? []).map((l) => l.attachment).filter((a): a is NonNullable<typeof a> => Boolean(a)) }
 }
 
 function mapAchievements(list: unknown[]): TAchievement[] {
-  return list.map((a) => withAttachments(a as TAchievement))
+   
+  return list.map((a) => withAttachments(a as any) as TAchievement)
 }
 
 export interface SessionData {

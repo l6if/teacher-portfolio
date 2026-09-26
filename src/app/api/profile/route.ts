@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/session'
+import { getCurrentUser, safeJson } from '@/lib/session'
 
 // البيانات المهنية + التكليف والنصاب
 export async function GET(req: NextRequest) {
@@ -8,19 +8,30 @@ export async function GET(req: NextRequest) {
   if (!me) return NextResponse.json({ error: 'غير مسجل الدخول' }, { status: 401 })
 
   const userId = req.nextUrl.searchParams.get('userId')
-  const target = userId && userId !== me.id
-    ? (me.role === 'MANAGER' ? await db.user.findUnique({ where: { id: userId } }) : null)
-    : me
-  if (!target) return NextResponse.json({ error: 'لا تملك صلاحية الوصول' }, { status: 403 })
+  let target = me
+  if (userId && userId !== me.id) {
+    if (me.role !== 'MANAGER') return target403()
+    // المدير يطّلع على ملفات المعلمين فقط — لا مديرين آخرين
+    const candidate = await db.user.findUnique({ where: { id: userId } })
+    if (!candidate || candidate.role !== 'TEACHER') return target403()
+    // نطاق المدرسة
+    if (me.school && candidate.school && candidate.school !== me.school) return target403()
+    target = candidate
+  }
 
   return NextResponse.json({ user: target })
+}
+
+function target403() {
+  return NextResponse.json({ error: 'لا تملك صلاحية الوصول' }, { status: 403 })
 }
 
 export async function PUT(req: NextRequest) {
   const me = await getCurrentUser()
   if (!me) return NextResponse.json({ error: 'غير مسجل الدخول' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await safeJson(req)
+  if (!body) return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 })
 
   // تحديث جزئي آمن: يُحدَّث فقط ما ورد في الطلب — لا يُمسّ ما لم يُرسل
   const data: Record<string, unknown> = {}

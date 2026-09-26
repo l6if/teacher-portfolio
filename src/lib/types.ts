@@ -37,7 +37,7 @@ export interface TAttachment {
   url?: string | null
   keywords?: string | null
   createdAt: string
-  links?: { id: string; achievementId?: string | null; goalId?: string | null }[]
+  links?: { id: string; achievementId?: string | null; goalId?: string | null; goal?: { id: string; title: string } | null }[]
   achievementTitles?: { id: string; title: string; type: string }[]
 }
 
@@ -121,7 +121,7 @@ export interface DashboardData {
     avgImprovement: number | null
     beneficiaries: number
   }
-  recommendation: { section: string; value: number } | null
+  recommendation: { section: import('./constants').SectionKey; value: number } | null
   recent: TAchievement[]
   drafts: TAchievement[]
 }

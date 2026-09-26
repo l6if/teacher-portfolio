@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/session'
+import { getCurrentUser, safeJson } from '@/lib/session'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const me = await getCurrentUser()
@@ -11,7 +11,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!existing) return NextResponse.json({ error: 'الهدف غير موجود' }, { status: 404 })
   if (existing.userId !== me.id) return NextResponse.json({ error: 'لا يمكنك تعديل هدف غيرك' }, { status: 403 })
 
-  const body = await req.json()
+  const body = await safeJson(req)
+  if (!body) return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 })
   const num = (v: unknown) => (v === '' || v === null || v === undefined ? null : Number(v))
   const data: Record<string, unknown> = {}
   for (const f of ['title', 'description', 'indicator', 'scope']) {

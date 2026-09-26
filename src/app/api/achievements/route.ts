@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveTargetUser, resolveYear } from '@/lib/session'
+import { resolveTargetUser, resolveYear, safeJson } from '@/lib/session'
 import { TYPE_SECTION } from '@/lib/constants'
 
 // قائمة الإنجازات مع الفلاتر
@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'لا يمكنك التعديل على ملف غيرك' }, { status: 403 })
   }
 
-  const body = await req.json()
+  const body = await safeJson(req)
+  if (!body) return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 })
   const year = await resolveYear(me.id, body.yearId)
   if (!year) return NextResponse.json({ error: 'لا توجد سنة دراسية' }, { status: 400 })
 
@@ -102,11 +103,17 @@ export async function POST(req: NextRequest) {
     },
   })
 
+  // لا يمكن ربط إلا شواهدك أنت — تحقق ملكية قبل أي ربط
   if (Array.isArray(attachmentIds) && attachmentIds.length) {
-    await db.evidenceLink.createMany({
-      data: attachmentIds.map((attachmentId: string) => ({ attachmentId, achievementId: achievement.id })),
-      skipDuplicates: true,
+    const valid = await db.attachment.findMany({
+      where: { id: { in: attachmentIds }, userId: me.id },
+      select: { id: true },
     })
+    if (valid.length) {
+      await db.evidenceLink.createMany({
+        data: valid.map((a) => ({ attachmentId: a.id, achievementId: achievement.id })),
+      })
+    }
   }
 
   const created = await db.achievement.findUnique({

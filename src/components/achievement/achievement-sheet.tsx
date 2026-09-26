@@ -105,6 +105,8 @@ export function AchievementSheet() {
   const [loaded, setLoaded] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // حارس السباق: طلب إنشاء مسودة واحد فقط مهما تتابعت الكتابة المتزامنة
+  const draftPromise = useRef<Promise<string | null> | null>(null)
 
   const { data: goalsData } = useAchievements()
   const goals = goalsData?.goals ?? []
@@ -128,7 +130,7 @@ export function AchievementSheet() {
             else if (typeof v === 'string' || typeof v === 'number') f[k] = v?.toString() ?? ''
           }
           setForm(f)
-          setAttachments((a.links ?? []).map((l) => l.attachment).filter(Boolean))
+          setAttachments((a.links ?? []).map((l) => l.attachment).filter((x): x is TAttachment => Boolean(x)))
           setGoalId(a.goalId ?? '')
           setStatus(a.status as AchievementStatus)
           setViewMode(Boolean(readonly)) // المدير يقرأ فقط
@@ -149,22 +151,30 @@ export function AchievementSheet() {
   }, [open, formAchievementId, formType, readonly])
   const fields = useMemo(() => (type ? TYPE_FIELDS[type] : []), [type])
 
-  /** إنشاء مسودة فورًا عند بدء الكتابة */
+  /** إنشاء مسودة فورًا عند بدء الكتابة — حارس يمنع تكرار المسودات عند الكتابة المتزامنة */
   const ensureDraft = useCallback(async (): Promise<string | null> => {
     if (id) return id
     if (!type) return null
-    const res = await fetch('/api/achievements', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, title: form.title || 'إنجاز بدون عنوان', status: 'DRAFT', yearId }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      toast.error(data.error ?? 'تعذر إنشاء المسودة')
-      return null
+    if (draftPromise.current) return draftPromise.current
+    draftPromise.current = (async () => {
+      const res = await fetch('/api/achievements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, title: form.title || 'إنجاز بدون عنوان', status: 'DRAFT', yearId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'تعذر إنشاء المسودة')
+        return null
+      }
+      setId(data.achievement.id)
+      return data.achievement.id as string
+    })()
+    try {
+      return await draftPromise.current
+    } finally {
+      draftPromise.current = null
     }
-    setId(data.achievement.id)
-    return data.achievement.id
   }, [id, type, form.title, yearId])
 
   /** حفظ تلقائي بعد 1.5 ثانية من التوقف */
@@ -195,8 +205,12 @@ export function AchievementSheet() {
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(() => doPatch(targetId), 1500)
     } else {
-      // أول كتابة: أنشئ المسودة ثم احفظ
-      ensureDraft().then((aid) => { if (aid) doPatch(aid) })
+      // أول كتابة: انتظر توقف الكتابة ثم أنشئ المسودة واحفظ — يمنع طلبات متزامنة متكررة
+      if (timer.current) clearTimeout(timer.current)
+      timer.current = setTimeout(async () => {
+        const aid = await ensureDraft()
+        if (aid) doPatch(aid)
+      }, 1500)
     }
   }, [id, status, goalId, attachments, viewMode, ensureDraft])
 
@@ -365,6 +379,7 @@ export function AchievementSheet() {
           </div>
         ) : !loaded ? (
           <div className="flex h-full items-center justify-center">
+            <SheetTitle className="sr-only">جارٍ تحميل الإنجاز</SheetTitle>
             <Icon name="Loader2" className="size-7 animate-spin text-primary" />
           </div>
         ) : (
