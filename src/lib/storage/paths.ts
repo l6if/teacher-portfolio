@@ -4,7 +4,9 @@
 //   كمعرف أبدًا، ويُحتفظ به في Metadata قاعدة البيانات (fileName) فقط.
 // - كل مقطع يُنظَّف من أي محاولة اجتياز مسار (../ أو / أو \ أو محارف تحكم).
 
-/** تنظيف مقطع مسار: حروف يونيكود (العربية محفوظة) وأرقام و - و _ فقط */
+import { createHash } from 'crypto'
+
+/** تنظيف مقطع مسار — ASCII آمن لـ Supabase Storage (المفاتيح غير اللاتينية تُهشَّر حتميًا) */
 export function sanitizeSegment(raw: string | null | undefined, fallback: string, maxLen = 60): string {
   if (!raw) return fallback
   let s = String(raw)
@@ -12,9 +14,13 @@ export function sanitizeSegment(raw: string | null | undefined, fallback: string
     .replace(/\s+/g, '-') // المسافات → شرطة
     .replace(/[./\\:*>|"'\[\]{}();!?~`\x00-\x1f\u200e\u200f\u202a-\u202e]/g, '') // محارف خطرة/تحكم/اتجاه
     .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, maxLen)
-    .replace(/^-+|-+$/g, '')
+  if (/[^\x20-\x7e]/.test(s)) {
+    // مقطع غير ASCII → بديل حتمي + بصمة sha1 ثابتة للاسم الأصلي
+    const ascii = s.replace(/[^\x20-\x7e]/g, '').replace(/-{2,}/g, '-')
+    const digest = createHash('sha1').update(s, 'utf8').digest('hex').slice(0, 8)
+    s = `${ascii ? ascii + '-' : ''}u${digest}`
+  }
+  s = s.slice(0, maxLen).replace(/^-+|-+$/g, '')
   if (!s) s = fallback
   return s
 }
