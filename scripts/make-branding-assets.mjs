@@ -13,11 +13,18 @@
  *
  * No path is redrawn or modified — ONLY the single .st0 fill color changes.
  */
+import { createRequire } from 'module'
+import { fileURLToPath } from 'url'
+
+const require = createRequire(import.meta.url)
 const fs = require('fs')
 const path = require('path')
 
-const SRC = '/home/z/my-project/scripts/logo-candidates/moe-official.svg'
-const OUT_DIR = '/home/z/my-project/public/branding'
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
+const ROOT = path.resolve(__dirname, '..')
+
+const SRC = path.join(ROOT, 'scripts/logo-candidates/moe-official.svg')
+const OUT_DIR = path.join(ROOT, 'public/branding')
 
 const PROVENANCE = ` Official asset source: https://www.moe.gov.sa/MOECore/Images/Logo.svg
   Retrieved: 2026-09-27 (via browser session; content-type image/svg+xml; Adobe Illustrator 22.1 export)
@@ -46,7 +53,7 @@ fs.writeFileSync(path.join(OUT_DIR, 'ministry-logo.svg'), teal)
 fs.writeFileSync(path.join(OUT_DIR, 'ministry-logo-white.svg'), white)
 
 // verify: parse again + render both to PNG for visual check
-const sharp = require('/home/z/my-project/node_modules/sharp')
+const sharp = require(path.join(ROOT, 'node_modules/sharp'))
 ;(async () => {
   for (const name of ['ministry-logo.svg', 'ministry-logo-white.svg']) {
     const p = path.join(OUT_DIR, name)

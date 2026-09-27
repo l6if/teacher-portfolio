@@ -16,8 +16,7 @@
 //   • روابط الشواهد (attachmentId/achievementId/goalId) كاملة الثلاثيات
 // يخرج 1 عند أي تفاوت — المصدر يُقرأ فقط ولا يُمس أبدًا.
 
-import { PrismaClient as SrcClient } from '../.sqlite-client'
-import { PrismaClient as PgClient } from '../.pg-client'
+import { loadSqliteClient, loadPgClient } from './load-generated-client'
 import { resolve as pathResolve } from 'path'
 
 const MODELS = [
@@ -76,7 +75,7 @@ async function main() {
 
   // ── قراءة المصدر كاملة (عميل SQLite مخصص) ──
   process.env.DATABASE_URL = `file:${pathResolve(sqliteFile)}`
-  const src = new SrcClient()
+  const src = loadSqliteClient()
   const srcData: Record<string, any[]> = {}
   const srcCounts: Record<string, number> = {}
   for (const m of MODELS) {
@@ -87,7 +86,7 @@ async function main() {
 
   // ── قراءة الهدف كاملة (عميل PG مخصص) ──
   process.env.DATABASE_URL = targetUrl
-  const pg = new PgClient()
+  const pg = loadPgClient()
   const pgData: Record<string, any[]> = {}
   const pgCounts: Record<string, number> = {}
   for (const m of MODELS) {

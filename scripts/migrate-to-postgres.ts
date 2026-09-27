@@ -15,8 +15,7 @@
 // - ملاحظة: شغّل الترحيل قبل تبديل التطبيق إلى postgres (bun scripts/use-db.ts postgres).
 // - يتحقق من تطابق عدد الصفوف لكل جدول بعد الترحيل.
 
-import { PrismaClient as SrcClient } from '../.sqlite-client' // عميل قراءة المصدر SQLite — منفصل عن عميل التطبيق (الذي قد يكون postgres-generated)
-import { PrismaClient as PgClient } from '../.pg-client' // عميل الترحيل — يكتب الهدف PostgreSQL
+import { loadSqliteClient, loadPgClient } from './load-generated-client'
 import { existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -97,7 +96,7 @@ async function main() {
 
   // ─── التأكد من وجود مخطط الهدف (إنشاء عبر db push عند اللزوم) ──
   process.env.DATABASE_URL = targetUrl
-  const probe = new PgClient()
+  const probe = loadPgClient()
   let schemaReady = true
   try {
     await probe.user.count()
@@ -119,7 +118,7 @@ async function main() {
   // لذا نلتزم بترتيب صارم: كل استعلامات المصدر تنفَّذ بـ env=sqlite ثم كل استعلامات
   // الهدف بـ env=postgres — لا تخلط بينهما أبدًا.
   process.env.DATABASE_URL = toSqliteUrl(sqliteFile)
-  const src = new SrcClient()
+  const src = loadSqliteClient()
   const batches: { model: string; rows: Record<string, unknown>[] }[] = []
   const sourceCounts: Record<string, number> = {}
   for (const m of MODELS) {
@@ -136,7 +135,7 @@ async function main() {
 
   // ─── المرحلة 2: الكتابة والتحقق في الهدف (env = postgres) ──────
   process.env.DATABASE_URL = targetUrl
-  const pg = new PgClient()
+  const pg = loadPgClient()
   try {
     // حماية الهدف: بيانات موجودة تتطلب --fresh
     const targetCounts: Record<string, number> = {}
