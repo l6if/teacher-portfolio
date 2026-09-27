@@ -1,0 +1,68 @@
+🚀 Initializing Z-AI SDK...
+🔎 Searching images: "Saudi Arabia Ministry of Education official logo وزارة التعليم شعار رسمي"
+✅ Got 8 images
+{
+  "success": true,
+  "query": "Saudi Arabia Ministry of Education official logo وزارة التعليم شعار رسمي",
+  "count": 8,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/1ae8d23f5e59.jpg",
+      "caption": "",
+      "source": "YouTube",
+      "original_width": "1280px",
+      "original_height": "720px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4591f29aec18.jpg",
+      "caption": "",
+      "source": "LinkedIn",
+      "original_width": "1280px",
+      "original_height": "720px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/d65f1ee95d15.png",
+      "caption": "",
+      "source": "الموسوعة العربية الشاملة",
+      "original_width": "1645px",
+      "original_height": "881px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/8d961e4d3570.png",
+      "caption": "",
+      "source": "متجر سلطان للمنتجات المدرسية",
+      "original_width": "1000px",
+      "original_height": "1000px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/1996e7b1cbfe.jpg",
+      "caption": "",
+      "source": "LinkedIn",
+      "original_width": "800px",
+      "original_height": "1000px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/94d63a582b44.png",
+      "caption": "",
+      "source": "Tabayu",
+      "original_width": "1080px",
+      "original_height": "1080px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/aeaf29a0003e.jpg",
+      "caption": "",
+      "source": "بوابة الأهرام",
+      "original_width": "1254px",
+      "original_height": "1254px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/dc5d20aba8c5.png",
+      "caption": "",
+      "source": "جامعة الموصل",
+      "original_width": "1728px",
+      "original_height": "1728px"
+    }
+  ]
+}

@@ -216,31 +216,17 @@ export function SectionDivider({ num, title, desc, stats }: { num: number; title
 
 /* ═══ الترويسة الرسمية — كل تقرير مستقل يبدأ بها ═══════════ */
 
-/** شعار وزارة التعليم — قابل للإعداد من REPORT_BRAND.ministryLogo،
- *  والافتراضي شعار هندسي رسمي (نخلة فوق كتاب مفتوح داخل حلقتين) بلون واحد مناسب للطباعة */
+/** شعار وزارة التعليم السعودي — المصدر الموحد الوحيد REPORT_BRAND.ministryLogo
+ *  (أصل رسمي متجهي SVG من موقع الوزارة بخلفية شفافة — بلا أي نسخة مرسومة أو أيقونة بديلة).
+ *  علامة الوزارة أفقية (شعار + الاسم عربي/إنجليزي)، فيُضبط الارتفاع ويتبع العرض نسبته. */
 export function MinistryLogo({ size = 58 }: { size?: number }) {
-  if (REPORT_BRAND.ministryLogo) {
-    return <img src={REPORT_BRAND.ministryLogo} alt="" style={{ width: size, height: size, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
-  }
-  const c = RC.primary
+  if (!REPORT_BRAND.ministryLogo) return null
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" style={{ flexShrink: 0, display: 'block' }}>
-      <circle cx="32" cy="32" r="30" fill="none" stroke={c} strokeWidth="1.5" />
-      <circle cx="32" cy="32" r="26.8" fill="none" stroke={c} strokeWidth="0.5" opacity="0.55" />
-      {/* النخلة — جذع وسعفات */}
-      <g fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round">
-        <path d="M32 37.5 C31.3 32 31.3 28 32 23.5" />
-        <path d="M32 23.5 C27 20 22 20.5 19.5 23.5" />
-        <path d="M32 23.5 C37 20 42 20.5 44.5 23.5" />
-        <path d="M32 23 C29 18.5 24.5 17.5 21 19.5" />
-        <path d="M32 23 C35 18.5 39.5 17.5 43 19.5" />
-        <path d="M32 22.5 C30.6 18.8 30.8 16 32 14" />
-      </g>
-      <path d="M26 38.5 L38 38.5" stroke={c} strokeWidth="1.4" strokeLinecap="round" fill="none" />
-      {/* الكتاب المفتوح */}
-      <path d="M19 44.5 Q25.5 40.8 32 44.5 Q38.5 40.8 45 44.5 L45 50.5 Q38.5 47 32 50.5 Q25.5 47 19 50.5 Z" fill={c} opacity="0.92" />
-      <path d="M32 44.5 L32 50.5" stroke="#fff" strokeWidth="1.1" />
-    </svg>
+    <img
+      src={REPORT_BRAND.ministryLogo}
+      alt="شعار وزارة التعليم"
+      style={{ height: size, width: 'auto', maxWidth: '38%', objectFit: 'contain', display: 'block', flexShrink: 0 }}
+    />
   )
 }
 
