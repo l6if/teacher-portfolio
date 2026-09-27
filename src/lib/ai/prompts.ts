@@ -32,6 +32,13 @@ const PROFESSIONAL =
   'أنت مساعد مهني خبير في الصياغة التربوية العربية لملف إنجاز المعلم/المعلمة في المملكة العربية السعودية. ' +
   'أسلوبك: عربية فصحى سليمة، مهنية، واضحة، موجزة، قابلة للقياس قدر الإمكان. '
 
+/** مساعد الحقول الموحد: التعليمات المشتركة لكل الاقتراحات الحقلية —
+ *  نص المستخدم الحالي مسودة يُبنى عليها ولا يُستبدل استبدالًا أعمى */
+const FIELD_ASSIST =
+  'إن ورد في السياق نص حالي للحقل نفسه فهو مسودة كتبها المستخدم: ' +
+  'حسّن صياغتها وأكملها بناءً عليها دون إسقاط أي معلومة واقعية وردت فيها. ' +
+  'وإن لم يرد نص فاقترح من السياق المتاح فقط. '
+
 function parseJsonLoose(raw: string): Record<string, unknown> {
   const text = raw.trim()
   // بعض النماذج تغلف JSON بأسوار ``` — نتعامل معها
@@ -114,11 +121,14 @@ export const ACTIONS: Record<AiAction, ActionSpec> = {
     loadingHint: 'جاري إعداد تفاصيل التنفيذ…',
     jsonMode: true,
     temperature: 0.45,
-    maxTokens: 600,
+    maxTokens: 700,
     system: (c) =>
       PROFESSIONAL +
-      `بناءً على العنوان والسياق والأهداف (إن وُجدت)، اقترح خطوات تنفيذ منطقية عملية كقائمة مرقمة (5-8 خطوات). ` +
-      `الخطوات مقترحة عامة قابلة للتكييف — لا تدّعِ أنها نُفذت. ` +
+      `بناءً على العنوان والهدف والمشكلة والفئة المستفيدة والمدة وأي محتوى كتبه المستخدم، ` +
+      `اقترح وصفًا عمليًا منظمًا لتنفيذ الإنجاز يجيب عن: ماذا نُفِّذ؟ وكيف؟ وبأي أساليب أو أدوات؟ ` +
+      `قدّمه كخطوات مرقمة عملية (4-8 خطوات) أو فقرات موجزة حسب طبيعة العمل. ` +
+      FIELD_ASSIST +
+      `لا تخترع نشاطًا أو أداة لم تُذكر في السياق؛ إن كان السياق ناقصًا فاجعل الاقتراح عامًا قابلًا للتعديل بصيغة مقترحة لا مؤكدة. ` +
       `أعد JSON فقط بالشكل: {"execution": "1. ...\\n2. ..."}. ` +
       NO_INVENTION,
     user: (c) => `الموضوع: ${c.title ?? 'غير محدد'}\n${promptContext(c)}`,
@@ -226,16 +236,27 @@ export const ACTIONS: Record<AiAction, ActionSpec> = {
   suggestImpact: {
     uiLabel: 'صياغة الأثر',
     loadingHint: 'جاري صياغة الأثر…',
-    jsonMode: false,
+    jsonMode: true,
     temperature: 0.4,
     maxTokens: 300,
-    system: () =>
+    system: (c) =>
       PROFESSIONAL +
-      `بناءً على الوصف التالي فقط، صِغ فقرة «أثر مهني» واقعية من جملة إلى جملتين. ` +
-      `إن لم يرد قياس فعلي فاستخدم صياغة نوعية متوقعة بلا نسب مئوية مختلقة. أعد الأثر فقط.` +
+      `صِغ حقل «الأثر» لهذا الإنجاز بحيث يختلف جوهريًا عن «النتائج»: النتائج = ماذا حدث مباشرة؟ ` +
+      `أما الأثر = القيمة أو التغير الأوسع الناتج عن الإنجاز (على الطلاب أو الممارسة المهنية أو بيئة التعلم). ` +
+      `اجعله من جملة إلى ثلاث جمل مهنية جامعة. ` +
+      FIELD_ASSIST +
+      `إن وردت نتائج في السياق فابنِ الأثر عليها دون تكرار صياغتها حرفيًا. ` +
+      `ممنوع اختراع أي أرقام أو نسب أو أدلة — استند إلى السياق حصرًا، ` +
+      `وإن كان السياق لا يدعم أثرًا محققًا فاستخدم صياغة الأثر المتوقع بوضوح. ` +
+      `أعد JSON فقط بالشكل: {"impact": "..."}. ` +
       NO_INVENTION,
-    user: (c) => (c.text ?? c.title ?? '').trim(),
-    validate: (raw) => expectNonEmptyString(raw, 12),
+    user: (c) => `الموضوع: ${c.title ?? 'غير محدد'}\n${promptContext(c)}`,
+    validate: (raw) => {
+      const obj = parseJsonLoose(raw)
+      const v = String(obj.impact ?? '').trim()
+      if (v.length < 12) throw new AiError('invalid_output', 'أثر غير كافٍ.')
+      return { impact: v }
+    },
   },
 
   suggestRecommendations: {
@@ -320,6 +341,141 @@ export const ACTIONS: Record<AiAction, ActionSpec> = {
         }
       }
       return obj
+    },
+  },
+
+  // ═══ مساعد الحقول الموحد — عملية مستقلة لكل حقل مهم في نموذج الإنجاز ═══
+  // كل عملية: JSON صارم + سياق النموذج فقط + لا اختراع وقائع/أرقام إطلاقًا.
+
+  // ─── 1) عنوان الإنجاز — واحد فقط ────────────────────────────────
+  suggestAchievementTitle: {
+    uiLabel: 'اقتراح العنوان',
+    loadingHint: 'جاري اقتراح العنوان…',
+    jsonMode: true,
+    temperature: 0.5,
+    maxTokens: 120,
+    system: (c) =>
+      PROFESSIONAL +
+      `اقترح عنوانًا واحدًا فقط لهذا الإنجاز المهني. ` +
+      `شروط العنوان: عربي مهني واضح ومختصر (من 4 إلى 10 كلمات)، مناسب لتقرير رسمي، ` +
+      `ليس جملة طويلة ولا يحوي عبارات مدح أو تفاخر مبالغ فيه. ` +
+      `ابنِه حصرًا من معلومات السياق المتاحة (نوع الإنجاز، المجال، المشكلة/الحاجة، وصف التنفيذ، الفئة المستفيدة). ` +
+      FIELD_ASSIST +
+      `لا تخترع أي معلومة غير موجودة في السياق. ` +
+      `أعد JSON فقط بالشكل: {"title": "..."}. ` +
+      NO_INVENTION,
+    user: (c) => `الموضوع/البذرة الحالية: ${c.title ?? '(لا يوجد بعد)'}\n${promptContext(c)}`,
+    validate: (raw) => {
+      const obj = parseJsonLoose(raw)
+      const v = String(obj.title ?? '').trim()
+      if (v.length < 6 || v.length > 120) throw new AiError('invalid_output', 'عنوان غير صالح.')
+      return { title: v }
+    },
+  },
+
+  // ─── 2) وصف مختصر — 1-3 جمل ─────────────────────────────────────
+  suggestShortDescription: {
+    uiLabel: 'اقتراح الوصف المختصر',
+    loadingHint: 'جاري اقتراح الوصف المختصر…',
+    jsonMode: true,
+    temperature: 0.45,
+    maxTokens: 280,
+    system: (c) =>
+      PROFESSIONAL +
+      `اقترح وصفًا مختصرًا (من جملة إلى ثلاث جمل فقط) يلخص هذا الإنجاز استنادًا إلى معلومات السياق حصرًا. ` +
+      `لا تكرر العنوان حرفيًا — أضف قيمة تلخيصية موجزة (الغاية وطريقة العمل والناتج العام). ` +
+      FIELD_ASSIST +
+      `أعد JSON فقط بالشكل: {"description": "..."}. ` +
+      NO_INVENTION,
+    user: (c) => `الموضوع: ${c.title ?? 'غير محدد'}\n${promptContext(c)}`,
+    validate: (raw) => {
+      const obj = parseJsonLoose(raw)
+      const v = String(obj.description ?? '').trim()
+      if (v.length < 10) throw new AiError('invalid_output', 'وصف غير كافٍ.')
+      return { description: v }
+    },
+  },
+
+  // ─── 3) المشكلة أو الحاجة — بلا قياسات مختلقة ─────────────────────
+  suggestProblem: {
+    uiLabel: 'اقتراح المشكلة/الحاجة',
+    loadingHint: 'جاري صياغة المشكلة أو الحاجة…',
+    jsonMode: true,
+    temperature: 0.45,
+    maxTokens: 350,
+    system: (c) =>
+      PROFESSIONAL +
+      `صِغ صياغة مهنية لـ«المشكلة أو الحاجة» التي أدت إلى هذا الإنجاز استنادًا إلى السياق حصرًا. ` +
+      `ممنوع منعًا باتًا اختراع: نسب مئوية، أعداد طلاب، نتائج تشخيصية، درجات، اختبارات — ` +
+      `إلا إذا وردت نصًا صريحًا في مدخلات المستخدم. ` +
+      `إن لم تتوفر تفاصيل فاستخدم صياغة مهنية عامة قابلة للتعديل ` +
+      `(مثل: «لوحظ وجود تفاوت في مستوى الطلاب في مهارات …») دون ادعاء أي قياس. ` +
+      FIELD_ASSIST +
+      `أعد JSON فقط بالشكل: {"problem": "..."}. ` +
+      NO_INVENTION,
+    user: (c) => `الموضوع: ${c.title ?? 'غير محدد'}\n${promptContext(c)}`,
+    validate: (raw) => {
+      const obj = parseJsonLoose(raw)
+      const v = String(obj.problem ?? '').trim()
+      if (v.length < 10) throw new AiError('invalid_output', 'صياغة غير كافية.')
+      return { problem: v }
+    },
+  },
+
+  // ─── 4) مراحل التنفيذ — مراحل متكيفة لا قالب ثابت ─────────────────
+  suggestStages: {
+    uiLabel: 'اقتراح مراحل التنفيذ',
+    loadingHint: 'جاري اقتراح مراحل التنفيذ…',
+    jsonMode: true,
+    temperature: 0.45,
+    maxTokens: 500,
+    system: (c) =>
+      PROFESSIONAL +
+      `اقترح مراحل تنفيذ مرتبة (من 3 إلى 7 مراحل) لهذا الإنجاز، متكيفة مع طبيعته الفعلية الظاهرة في السياق ` +
+      `(نوع الإنجاز، المدة، وصف التنفيذ، المراحل الحالية إن وُجدت) — ` +
+      `لا تستخدم القالب الخماسي نفسه لكل إنجاز؛ عدّل عدد المراحل ومضمونها حسب العمل. ` +
+      `صِغ كل مرحلة جملة قصيرة عملية واضحة. ` +
+      FIELD_ASSIST +
+      `أعد JSON فقط بالشكل: {"stages": ["...", "...", "..."]}. ` +
+      NO_INVENTION,
+    user: (c) => `الموضوع: ${c.title ?? 'غير محدد'}\n${promptContext(c)}`,
+    validate: (raw) => {
+      const obj = parseJsonLoose(raw)
+      const list = obj.stages
+      if (!Array.isArray(list) || list.length < 2 || list.length > 8) {
+        throw new AiError('invalid_output', 'عدد مراحل غير مناسب.')
+      }
+      const stages = list.map((s) => String(s ?? '').trim()).filter(Boolean)
+      if (stages.length < 2) throw new AiError('invalid_output', 'مراحل فارغة.')
+      return { stages }
+    },
+  },
+
+  // ─── 5) النتائج — وصفية/متوقعة فقط بلا أرقام مختلقة ────────────────
+  suggestResults: {
+    uiLabel: 'اقتراح النتائج',
+    loadingHint: 'جاري صياغة النتائج…',
+    jsonMode: true,
+    temperature: 0.4,
+    maxTokens: 400,
+    system: (c) =>
+      PROFESSIONAL +
+      `اقترح صياغة حقل «النتائج» لهذا الإنجاز. ` +
+      `قاعدة صارمة: ممنوع اختراع أي أرقام أو نسب أو أعداد أو قياسات ` +
+      `(مثل «ارتفع التحصيل 30%» أو «نجح 25 طالبًا») إلا إذا وردت حرفيًا في مدخلات المستخدم. ` +
+      `إن وردت نتائج فعلية في السياق فصِغها مهنيًا مع الحفاظ عليها بدقة دون إضافة عليها. ` +
+      `وإن لم توجد قياسات فعلية فاستخدم لغة وصفية متحفظة مدعومة بالسياق فقط ` +
+      `(مثل: «أسهم التنفيذ في تعزيز…»، «لوحظ تفاعل أفضل أثناء…»)، ` +
+      `أو صيغة «النتائج المتوقعة…» — ولا تقدم أيًّا منها كحقيقة مقيسة. ` +
+      FIELD_ASSIST +
+      `أعد JSON فقط بالشكل: {"results": "..."}. ` +
+      NO_INVENTION,
+    user: (c) => `الموضوع: ${c.title ?? 'غير محدد'}\n${promptContext(c)}`,
+    validate: (raw) => {
+      const obj = parseJsonLoose(raw)
+      const v = String(obj.results ?? '').trim()
+      if (v.length < 10) throw new AiError('invalid_output', 'نتائج غير كافية.')
+      return { results: v }
     },
   },
 }

@@ -15,7 +15,15 @@ export interface ReportAIContextInput {
   problem?: string
   goal?: string
   generalGoal?: string
-  // النص الموجود في الحقل (إن وُجد)
+  // ── حقول نموذج الإنجاز (مساعد الحقول الموحد — Patch) ──
+  description?: string // الوصف المختصر
+  execution?: string // ماذا نُفِّذ وكيف
+  stages?: string // مراحل التنفيذ الحالية
+  results?: string // النتائج الحالية
+  impact?: string // الأثر الحالي
+  beneficiaries?: string // الفئة المستفيدة
+  duration?: string // مدة التنفيذ
+  // النص الموجود في الحقل (إن وُجد) — للحقول خارج الخانات المسمّاة أعلاه
   text?: string
   // أهداف مدخلة مسبقًا (لتنفيذ مرتبط بها)
   objectives?: string[]
@@ -41,9 +49,12 @@ function cleanValue(raw: unknown): string {
  */
 export function buildReportAIContext(input: ReportAIContextInput): Record<string, string> {
   const out: Record<string, string> = {}
+  // الترتيب مقصود: الحقل النشط (text) والعنوان أولًا حتى لا يُقتا عند حد المجموع،
+  // ثم باقي حقول النموذج بترتيب أهميتها للاقتراحات الحقلية
   const fields: (keyof ReportAIContextInput)[] = [
-    'achievementType', 'title', 'field', 'stage', 'subject', 'grade',
-    'problem', 'goal', 'generalGoal', 'text',
+    'text', 'title', 'problem', 'execution', 'results', 'impact',
+    'description', 'stages', 'goal', 'generalGoal',
+    'beneficiaries', 'duration', 'achievementType', 'field', 'stage', 'subject', 'grade',
   ]
   let total = 0
   for (const f of fields) {
@@ -76,6 +87,13 @@ export function contextToPromptBlock(context: Record<string, string>): string {
     problem: 'المشكلة/الحاجة',
     goal: 'الهدف المهني المرتبط',
     generalGoal: 'الهدف العام',
+    description: 'الوصف المختصر',
+    execution: 'وصف التنفيذ',
+    stages: 'مراحل التنفيذ الحالية',
+    results: 'النتائج الحالية',
+    impact: 'الأثر الحالي',
+    beneficiaries: 'الفئة المستفيدة',
+    duration: 'مدة التنفيذ',
     text: 'النص الموجود',
     objectives: 'أهداف مدخلة',
   }

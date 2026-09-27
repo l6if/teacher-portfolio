@@ -340,12 +340,14 @@ async function testAI(teacherCookie: string) {
   ok('ai: معلومات الحد اليومي مرفقة', typeof r.json?.quota === 'object' && r.json?.quota !== null)
 
   // ممنوع اختراع النسب — تحقق من أن الأثر لا يحتوي نسبة مختلقة من لا شيء
+  // (الإصدار الحالي يعيد JSON {impact} — نقبل الشكلين للتوافق)
   r = await req('POST', '/api/ai/suggestImpact', {
     context: { text: 'نفذت برنامج قراءة صفي بدون أي قياس بعدي حتى الآن' },
   }, teacherCookie)
   if (r.status === 200) {
-    const impact = String(r.json?.result ?? '')
-    ok('ai: الأثر بلا نسبة مختلقة (لا ادعاء نتائج)', !/ارتفعت.{0,20}(9|8|7)\d%/.test(impact), impact.slice(0, 80))
+    const res = r.json?.result
+    const impact = typeof res === 'string' ? res : String(res?.impact ?? '')
+    ok('ai: الأثر بلا نسبة مختلقة (لا ادعاء نتائج)', impact.length > 0 && !/ارتفعت.{0,20}(9|8|7)\d%/.test(impact), impact.slice(0, 80))
   } else {
     ok('ai: suggestImpact استجاب', false, r.json?.error)
   }

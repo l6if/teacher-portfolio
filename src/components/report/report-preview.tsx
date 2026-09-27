@@ -13,7 +13,8 @@
  *    الخاصة من المحتوى نفسه — فتتطابق المعاينة مع PDF المطبوع.
  *
  * الجوال: Fit Width + تكبير + تنقل بين الصفحات + مؤشر الصفحة الحالية.
- * رجوع للتعديل يغلق الطبقة فقط — شاشة الإعداد تبقى محمّلة بحالتها كاملة.
+ * «رجوع للتعديل» زر أبيض بارز في أقصى يمين الشريط دائمًا (كل المقاسات) —
+ * يغلق طبقة المعاينة فقط، شاشة الإعداد/النموذج تبقى محمّلة بحالتها كاملة.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -353,18 +354,21 @@ export function ReportPreview() {
 
   const toolbar = useMemo(() => (
     <div className="rp-toolbar" dir="rtl">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <Button variant="ghost" onClick={back} className="min-h-10 gap-2 rounded-xl px-3 text-sm font-semibold">
-          <Icon name="ArrowRight" className="size-4" />
-          <span className="hidden sm:inline">رجوع للتعديل</span>
-        </Button>
+      {/* flex-auto (basis:auto) لا flex-1 (basis:0): عند الضيق يلتف هذا الصف
+          فعليًا لمصفوفين بدل أن يفيض الزر فوق أدوات التكبير */}
+      <div className="flex min-w-0 flex-auto items-center gap-2.5">
+        {/* رجوع للتعديل — زر أبيض بارز أقصى اليمين، ظاهر دائمًا بكل المقاسات */}
+        <button type="button" onClick={back} className="rp-back-btn" aria-label="رجوع للتعديل">
+          <Icon name="ArrowRight" className="size-4.5" strokeWidth={2.2} />
+          <span>رجوع للتعديل</span>
+        </button>
         <div className="min-w-0 border-r border-white/15 pr-2.5 sm:pr-4">
           <h2 className="truncate text-sm font-bold text-white sm:text-base">معاينة التقرير</h2>
           <p className="hidden truncate text-[11px] text-white/60 sm:block">راجع التقرير قبل اعتماده أو تنزيله — {previewConfig?.title ?? ''}</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
         {/* التكبير */}
         <div className="flex items-center gap-0.5 rounded-xl bg-white/10 p-0.5">
           <button onClick={() => zoom(-1)} className="flex size-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white" aria-label="تصغير">
@@ -394,8 +398,10 @@ export function ReportPreview() {
   if (!open || !previewConfig) return null
 
   if (isLoading) {
+    // z-[70]: فوق ورقة النموذج (z-50) — المعاينة من داخل النموذج تغطيه بالكامل،
+    // وتحت نوافذ المساعد الذكي والإشعارات (z-100)
     return (
-      <div id="report-preview-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-200" dir="rtl">
+      <div id="report-preview-overlay" className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-200" dir="rtl">
         <div className="text-center">
           <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-emerald-700 border-t-transparent" />
           <p className="text-sm text-neutral-600">جارٍ تحميل بيانات التقرير…</p>
@@ -405,7 +411,7 @@ export function ReportPreview() {
   }
 
   return (
-    <div id="report-preview-overlay" className="fixed inset-0 z-50 flex flex-col bg-neutral-200/95 backdrop-blur-sm" dir="rtl">
+    <div id="report-preview-overlay" className="fixed inset-0 z-[70] flex flex-col bg-neutral-200/95 backdrop-blur-sm" dir="rtl">
       {toolbar}
 
       {/* منطقة الصفحات */}

@@ -20,12 +20,31 @@ export interface AiAssistContext {
   text?: string
   objectives?: string[]
   achievementType?: string
+  // ── حقول نموذج الإنجاز (مساعد الحقول الموحد — Patch) ──
+  description?: string
+  execution?: string
+  stages?: string
+  results?: string
+  impact?: string
+  beneficiaries?: string
+  duration?: string
 }
 
 type AiResult =
   | { kind: 'text'; value: string }
   | { kind: 'list'; items: string[] }
   | { kind: 'draft'; fields: Record<string, string> }
+
+/** أزواج (عملية → مفتاح النص في استجابة JSON) — لعمليات الحقل الموحدة */
+const FIELD_TEXT_KEYS: Record<string, string> = {
+  suggestGeneralObjective: 'generalObjective',
+  suggestExecution: 'execution',
+  suggestAchievementTitle: 'title',
+  suggestShortDescription: 'description',
+  suggestProblem: 'problem',
+  suggestResults: 'results',
+  suggestImpact: 'impact',
+}
 
 /** تحويل استجابة API (المتحقق منها خادميًا) إلى شكل العرض */
 function toDisplayResult(action: string, result: unknown): AiResult {
@@ -36,6 +55,17 @@ function toDisplayResult(action: string, result: unknown): AiResult {
     }
     if (action === 'suggestRecommendations' && Array.isArray(obj.recommendations)) {
       return { kind: 'list', items: (obj.recommendations as unknown[]).map(String) }
+    }
+    // مراحل التنفيذ — تُعرض وتُطبق كخطوات مرقمة متناسقة مع حقل «مراحل التنفيذ»
+    if (action === 'suggestStages' && Array.isArray(obj.stages)) {
+      const stages = obj.stages.map((s) => String(s ?? '').trim()).filter(Boolean)
+      if (stages.length >= 2) {
+        return { kind: 'text', value: stages.map((s, i) => `${i + 1}. ${s}`).join('\n') }
+      }
+    }
+    const textKey = FIELD_TEXT_KEYS[action]
+    if (textKey && typeof obj[textKey] === 'string' && (obj[textKey] as string).trim()) {
+      return { kind: 'text', value: (obj[textKey] as string).trim() }
     }
     if (typeof obj.generalObjective === 'string') {
       return { kind: 'text', value: obj.generalObjective }
@@ -88,6 +118,8 @@ interface DialogProps {
   result: AiResult | null
   /** يتغير مع كل طلب — يعيد تركيب الجسم التفاعلي بحالة نظيفة */
   requestId: number
+  /** اسم الحقل (إن وُجد) — يظهر في رأس نافذة المعاينة للتوضيح */
+  fieldLabel?: string
   onClose: () => void
   onApplyText: (value: string) => void
   onApplyList: (items: string[]) => void
@@ -96,7 +128,7 @@ interface DialogProps {
 }
 
 function AiSuggestionDialog({
-  open, action, loading, error, result, requestId, onClose, onApplyText, onApplyList, onApplyDraft, onRegenerate,
+  open, action, loading, error, result, requestId, fieldLabel, onClose, onApplyText, onApplyList, onApplyDraft, onRegenerate,
 }: DialogProps) {
   if (!open) return null
 
@@ -106,12 +138,14 @@ function AiSuggestionDialog({
       <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-border bg-card shadow-lift anim-fade-up sm:rounded-3xl">
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-card/95 px-5 py-3.5 backdrop-blur">
           <div className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
               <Icon name="Sparkles" className="size-4.5" strokeWidth={1.8} />
             </span>
-            <div>
-              <h3 className="text-sm font-bold text-foreground">اقتراح المساعد الذكي</h3>
-              <p className="text-[11px] text-muted-foreground">معاينة قبل الاستخدام — لا يُحفظ شيء تلقائيًا</p>
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-bold text-foreground">اقتراح المساعد الذكي</h3>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {fieldLabel ? `${fieldLabel} — ` : ''}معاينة قبل الاستخدام، لا يُحفظ شيء تلقائيًا
+              </p>
             </div>
           </div>
           <button
@@ -371,10 +405,12 @@ export interface AiAssistButtonProps {
   /** تعطيل (مثلا: حقل readonly) */
   disabled?: boolean
   className?: string
+  /** اسم الحقل — يظهر في رأس نافذة المعاينة وفي aria-label الزر */
+  fieldLabel?: string
 }
 
 export function AiAssistButton({
-  action, label, context, onApplyText, onApplyList, onApplyDraft, disabled, className,
+  action, label, context, onApplyText, onApplyList, onApplyDraft, disabled, className, fieldLabel,
 }: AiAssistButtonProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -415,6 +451,7 @@ export function AiAssistButton({
         type="button"
         onClick={run}
         disabled={disabled || loading}
+        aria-label={fieldLabel ? `${fieldLabel} — ${label ?? 'مساعد ذكي'}` : undefined}
         className={`flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20 disabled:opacity-50 ${className ?? ''}`}
         title="مساعد ذكي — اقتراح مهني لهذا الحقل"
       >
@@ -429,6 +466,7 @@ export function AiAssistButton({
         error={error}
         result={result}
         requestId={requestId}
+        fieldLabel={fieldLabel}
         onClose={() => setOpen(false)}
         onApplyText={(v) => { onApplyText?.(v); toast.success('تم إدخال الاقتراح — يمكنك تعديله بحرية') }}
         onApplyList={(items) => { onApplyList?.(items); toast.success('تم إدخال الاقتراح — يمكنك تعديله بحرية') }}
@@ -436,5 +474,45 @@ export function AiAssistButton({
         onRegenerate={run}
       />
     </>
+  )
+}
+
+// ═══ مساعد الحقل الموحد — AIFieldAssistant ═══════════════════
+// زر واحد بنفس الشكل لكل الحقول النصية المهمة في نموذج الإنجاز.
+// يتكيف مع حالة الحقل: فارغ → «اقتراح»، فيه نص → «تحسين/إكمال» (2.11).
+// التدفق موحد دائمًا: طلب (loading + منع تكرار) → معاينة الاقتراح →
+// [استخدام / تعديل / إعادة توليد / إلغاء] — لا يُكتب في الحقل شيء قبل
+// قبول المستخدم، وفشل Groq أو الإلغاء لا يمس النص الأصلي إطلاقًا.
+
+export interface AIFieldAssistantProps {
+  /** اسم الحقل كما يظهر للمستخدم (يوضح نافذة المعاينة ويسنِد الوصول) */
+  field: string
+  /** مسار العملية المستقلة لهذا الحقل (Action Registry) */
+  action: string
+  /** القيمة الحالية للحقل — تحدد وضع الزر: اقتراح أو تحسين */
+  currentValue?: string
+  /** سياق النموذج المنقّى (يُرسل للخادم فقط) */
+  context: AiAssistContext
+  /** تطبيق النص المقبول على الحقل — يستدعى بعد موافقة المستخدم فقط */
+  onApply: (value: string) => void
+  disabled?: boolean
+  className?: string
+}
+
+export function AIFieldAssistant({
+  field, action, currentValue, context, onApply, disabled, className,
+}: AIFieldAssistantProps) {
+  const hasDraft = Boolean(currentValue && currentValue.trim().length >= 5)
+  const mode = hasDraft ? 'تحسين' : 'اقتراح'
+  return (
+    <AiAssistButton
+      action={action}
+      label={mode}
+      context={context}
+      onApplyText={onApply}
+      disabled={disabled}
+      fieldLabel={field}
+      className={`min-h-8 px-3 ${className ?? ''}`}
+    />
   )
 }

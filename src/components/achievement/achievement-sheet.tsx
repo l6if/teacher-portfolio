@@ -6,7 +6,7 @@ import { useApp } from '@/store/app-store'
 import { useScope, useAchievements, useSession } from '@/hooks/use-data'
 import { TYPES, TYPE_MAP, TYPE_FIELDS, STATUS_META, type AchievementType, type AchievementStatus } from '@/lib/constants'
 import { Icon } from '@/components/shared/icon'
-import { AiAssistButton, type AiAssistContext } from '@/components/shared/ai-assist'
+import { AiAssistButton, AIFieldAssistant, type AiAssistContext } from '@/components/shared/ai-assist'
 import { AttachmentsEditor } from './attachments-editor'
 import { HijriDateField } from '@/components/shared/hijri-date-picker'
 import { officialTitle } from '@/components/report/official-report'
@@ -51,33 +51,20 @@ function TypePicker({ onPick }: { onPick: (t: AchievementType) => void }) {
   )
 }
 
-/** سجل إجراءات المساعد لكل حقل — لا تُعرض كل الخيارات في كل حقل */
-const FIELD_AI_ACTIONS: Record<string, { action: string; label: string; needsText?: boolean; needsContext?: boolean }[]> = {
-  title: [{ action: 'improveTitle', label: 'تحسين العنوان', needsText: true }],
-  description: [
-    { action: 'improveText', label: 'تحسين الصياغة', needsText: true },
-    { action: 'expand', label: 'توسيع', needsText: true },
-    { action: 'summarize', label: 'تلخيص', needsText: true },
-  ],
+/** سجل إجراءات المساعد لكل حقل — Action Registry:
+ *  الحقول المهمة السبعة تستخدم الزر الموحد AIFieldAssistant (عملية مستقلة لكل حقل،
+ *  تتكيف تلقائيًا: فارغ → اقتراح / فيه نص → تحسين)، وتبقى أدوات
+ *  الهدف العام والملاحظات كما هي دون تغيير. */
+const FIELD_AI_ACTIONS: Record<string, { action: string; label?: string; assistant?: boolean; needsText?: boolean; needsContext?: boolean }[]> = {
+  title: [{ action: 'suggestAchievementTitle', assistant: true }],
+  description: [{ action: 'suggestShortDescription', assistant: true }],
+  problem: [{ action: 'suggestProblem', assistant: true }],
+  execution: [{ action: 'suggestExecution', assistant: true }],
+  actions: [{ action: 'suggestStages', assistant: true }],
+  results: [{ action: 'suggestResults', assistant: true }],
+  impact: [{ action: 'suggestImpact', assistant: true }],
   goalText: [
     { action: 'suggestGeneralObjective', label: 'اقتراح الهدف العام', needsContext: true },
-    { action: 'improveText', label: 'تحسين', needsText: true },
-  ],
-  problem: [{ action: 'improveText', label: 'تحسين الصياغة', needsText: true }],
-  execution: [
-    { action: 'suggestExecution', label: 'اقتراح تفاصيل التنفيذ', needsContext: true },
-    { action: 'improveText', label: 'تحسين', needsText: true },
-  ],
-  actions: [
-    { action: 'toBullets', label: 'تحويل إلى نقاط', needsText: true },
-    { action: 'improveText', label: 'تحسين', needsText: true },
-  ],
-  results: [
-    { action: 'toBullets', label: 'تحويل إلى نقاط', needsText: true },
-    { action: 'improveText', label: 'تحسين', needsText: true },
-  ],
-  impact: [
-    { action: 'suggestImpact', label: 'صياغة الأثر', needsText: true },
     { action: 'improveText', label: 'تحسين', needsText: true },
   ],
   notes: [
@@ -86,6 +73,12 @@ const FIELD_AI_ACTIONS: Record<string, { action: string; label: string; needsTex
   ],
 }
 
+/** الحقول التي تصل للخادم عبر خانتها المسمّاة في السياق (لا تحتاج text) */
+const NAMED_CONTEXT_KEYS = new Set(['title', 'description', 'problem', 'execution', 'actions', 'results', 'impact', 'goalText'])
+
+/** قص طرفي عميل — يبقي الجسم ضمن حد الحجم الخادمي ويكفي للاقتراح */
+const cut = (v?: string) => (v && v.trim() ? v.trim().slice(0, 600) : undefined)
+
 export function AchievementSheet() {
   const open = useApp((s) => s.formOpen)
   const closeForm = useApp((s) => s.closeForm)
@@ -93,6 +86,9 @@ export function AchievementSheet() {
   const formAchievementId = useApp((s) => s.formAchievementId)
   const setPreviewConfig = useApp((s) => s.setPreviewConfig)
   const setPrintConfig = useApp((s) => s.setPrintConfig)
+  /** معاينة التقرير مفتوحة فوق النموذج — أي تفاعل معها يقع خارج ورقة Radix
+   *  فيحاول إغلاقها؛ نمنع الإغلاق حتى يبقى النموذج محمّلاً بحالته عند الرجوع للتعديل */
+  const previewOpen = useApp((s) => Boolean(s.previewConfig))
   const { yearId, readonly } = useScope()
   const qc = useQueryClient()
 
@@ -124,16 +120,26 @@ export function AchievementSheet() {
     else setPrintConfig(config)
   }
 
-  /** سياق المساعد الذكي المشترك — من بيانات المستخدم والنموذج الحالي */
+  /** سياق المساعد الذكي المشترك — بيانات المستخدم والنموذج الحالي كاملًا.
+   *  الحقول المهمة تمر عبر خاناتها المسمّاة (يبني كل Action تعليماته منها)،
+   *  وحقول الأدوات (ملاحظات…) تمرر نصها في `text` كما في الأصل. */
   const aiContext = useCallback((key?: string): AiAssistContext => ({
-    title: form.title || undefined,
-    achievementType: type ?? undefined,
+    achievementType: type ? (TYPE_MAP[type]?.label ?? type) : undefined,
+    title: cut(form.title),
+    description: cut(form.description),
+    problem: cut(form.problem),
+    execution: cut(form.execution),
+    stages: cut(form.actions),
+    results: cut(form.results),
+    impact: cut(form.impact),
+    beneficiaries: cut(form.beneficiaries),
+    duration: cut(form.durationText),
+    goal: cut(goals.find((g) => g.id === goalId)?.title),
+    generalGoal: cut(form.goalText),
     subject: sessionData?.user?.subject ?? undefined,
     stage: sessionData?.user?.stage ?? undefined,
-    problem: form.problem || undefined,
-    goal: goals.find((g) => g.id === goalId)?.title,
-    text: key ? form[key] || undefined : undefined,
-  }), [form.title, form.problem, type, sessionData?.user?.subject, sessionData?.user?.stage, goals, goalId])
+    text: key && !NAMED_CONTEXT_KEYS.has(key) ? cut(form[key]) : undefined,
+  }), [form, type, sessionData?.user?.subject, sessionData?.user?.stage, goals, goalId])
 
   // فتح الورقة: إعداد الحالة
   useEffect(() => {
@@ -314,7 +320,16 @@ export function AchievementSheet() {
               {def.optional && <span className="mr-1.5 text-[11px] font-normal text-muted-foreground">(اختياري)</span>}
             </label>
             <div className="flex flex-wrap items-center gap-1">
-              {aiActions.map((a) => (
+              {aiActions.map((a) => a.assistant ? (
+                <AIFieldAssistant
+                  key={a.action}
+                  field={def.label}
+                  action={a.action}
+                  currentValue={value}
+                  context={aiContext(key)}
+                  onApply={(v) => setField(key, v)}
+                />
+              ) : (
                 <AiAssistButton
                   key={a.action}
                   action={a.action}
@@ -370,7 +385,16 @@ export function AchievementSheet() {
             {def.optional && <span className="mr-1.5 text-[11px] font-normal text-muted-foreground">(اختياري)</span>}
           </label>
           <div className="flex flex-wrap items-center gap-1">
-            {aiActions.map((a) => (
+            {aiActions.map((a) => a.assistant ? (
+              <AIFieldAssistant
+                key={a.action}
+                field={def.label}
+                action={a.action}
+                currentValue={value}
+                context={aiContext(key)}
+                onApply={(v) => setField(key, v)}
+              />
+            ) : (
               <AiAssistButton
                 key={a.action}
                 action={a.action}
@@ -410,7 +434,7 @@ export function AchievementSheet() {
   const fieldKeys = fields.map((f) => f.key)
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) { closeForm() } }}>
+    <Sheet open={open} onOpenChange={(v) => { if (!v && previewOpen) return; if (!v) closeForm() }}>
       <SheetContent
         side="left"
         dir="rtl"

@@ -17,6 +17,12 @@ export type AiAction =
   | 'suggestInitiative'        // مسودة مبادرة كاملة (JSON)
   | 'suggestRemedialPlan'      // مسودة خطة علاجية كاملة (JSON)
   | 'improveTitle'             // تحسين عنوان
+  // ── مساعد الحقول الموحد — Patch: عملية مستقلة لكل حقل مهم في نموذج الإنجاز ──
+  | 'suggestAchievementTitle'  // عنوان مهني واحد من سياق النموذج
+  | 'suggestShortDescription'  // وصف مختصر 1-3 جمل
+  | 'suggestProblem'           // صياغة المشكلة/الحاجة (بلا اختراع قياسات)
+  | 'suggestStages'            // مراحل تنفيذ مرتبة متكيفة مع الإنجاز
+  | 'suggestResults'           // نتائج وصفية/متوقعة (بلا أرقام مختلقة)
 
 export interface ChatMessage {
   role: 'system' | 'user'

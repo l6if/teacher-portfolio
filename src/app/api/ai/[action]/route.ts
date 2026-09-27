@@ -14,7 +14,7 @@ import { AiError } from '@/lib/ai/types'
  * (للحساب التجريبي حد أدنى) + تحقق صارم من المخرجات + سجل استخدام خفيف بلا محتوى.
  */
 
-const MAX_BODY_BYTES = 8 * 1024 // 8KB — سياق مختصر فقط
+const MAX_BODY_BYTES = 20 * 1024 // 20KB — سياق نموذج الإنجاز الكامل (مقصود طرفيًا 600 حرفًا/حقل) — الخادم ينقّي إلى 700/حقل و3000 إجمالًا
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ action: string }> }) {
   const me = await getCurrentUser()
@@ -40,8 +40,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
   const context = buildReportAIContext(body.context as Parameters<typeof buildReportAIContext>[0])
   const spec = ACTIONS[action]
 
-  // عمليات النص تتطلب نصًا موجودًا
-  const textActions = ['improveText', 'proofread', 'summarize', 'toBullets', 'shorten', 'expand', 'suggestImpact']
+  // عمليات النص تتطلب نصًا موجودًا — اقتراحات الحقول الموحدة تعمل من السياق بلا نص
+  const textActions = ['improveText', 'proofread', 'summarize', 'toBullets', 'shorten', 'expand']
   if (textActions.includes(action) && !context.text) {
     return NextResponse.json({ error: 'اكتب نصًا أولًا حتى أستطيع مساعدتك.' }, { status: 400 })
   }
