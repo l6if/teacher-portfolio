@@ -383,6 +383,12 @@
     break-before: page;
     page-break-inside: avoid;
   }
+  /* بداية تقرير مستقل جديد داخل قائمة — صفحة جديدة كاملة،
+     دون break-inside:avoid حتى يتدفق التقرير الطويل عبر صفحات متعددة طبيعيًا */
+  .print-report-start {
+    page-break-before: always;
+    break-before: page;
+  }
   /* جداول الخطة: يُكرَّر الرأس تلقائيًا عند امتداد الجدول لصفحة ثانية */
   table { page-break-inside: auto; }
   tr, th, td { page-break-inside: avoid; }

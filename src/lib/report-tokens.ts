@@ -15,8 +15,10 @@ export const REPORT_BRAND = {
   appName: 'ملف إنجاز المعلم',
   /** اللون الأساسي للهوية — أخضر زمردي */
   primary: '#0E7F6E',
-  /** نقطة الاستبدال المستقبلية للشعار (SVG data-URI) — فارغ = عنصر هندسي */
-  logo: '' as string,
+  /** شعار وزارة التعليم — قيمة Branding قابلة للإعداد (SVG data-URI أو URL صورة عالية الجودة بخلفية شفافة).
+   *  فارغ = شعار هندسي رسمي مضمن (نخلة فوق كتاب مفتوح داخل حلقتين) مناسب للطباعة.
+   *  عند توفير الأصل الرسمي: ضع رابطه هنا فقط وسيظهر في ترويسة كل تقرير. */
+  ministryLogo: '' as string,
 } as const
 
 /** ألوان الطباعة — محايدات هادئة بلون واحد */
@@ -94,4 +96,29 @@ export const FIELD_LABELS = {
 /** نص التذييل المشترك */
 export function footerLine(name: string, year: string) {
   return { right: `${name} — ${year}`, left: REPORT_BRAND.appName }
+}
+
+/* ═══ صياغة سطور الترويسة الرسمية — كلها من بيانات المستخدم، بلا Hardcode ═══ */
+
+/** اسم المدرسة بلا تكرار كلمة «مدرسة» إن كانت موجودة أصلًا في القيمة */
+export function schoolLine(school?: string | null): string | undefined {
+  const v = school?.trim()
+  if (!v) return undefined
+  return /^مدرسة\s/.test(v) ? v : `مدرسة ${v}`
+}
+
+/** الإدارة التعليمية: اسم كامل يُعرض كما أُدخل، ومحافظة فقط تُركَّب في صيغة رسمية بلا مضاعفة */
+export function educationAdminLine(admin?: string | null): string | undefined {
+  const v = admin?.trim()
+  if (!v) return undefined
+  if (/إدارة|التعليم/.test(v)) return v
+  return `الإدارة العامة للتعليم بمحافظة ${v}`
+}
+
+/** مكتب التعليم: يُعرض كما أُدخل إن كان اسمًا كاملًا، وإلا يُركَّب — ويُحذف السطر كليًا عند غيابه */
+export function educationOfficeLine(office?: string | null): string | undefined {
+  const v = office?.trim()
+  if (!v) return undefined
+  if (/مكتب|تعليم/.test(v)) return v
+  return `مكتب التعليم بـ${v}`
 }

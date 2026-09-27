@@ -10,9 +10,9 @@ import { RC, S, RT, RR } from '@/lib/report-tokens'
 import {
   Cover, ProfileCard, ExecSummary, Toc, SectionDivider,
   AchievementCase, ReportHeader, PrintFooter, EmptyNote, PageBreak,
-  Metric, ImpactRow,
+  Metric, ImpactRow, OfficialDocHeader, ReportDocumentSection,
 } from './report-parts'
-import { OfficialReport } from './official-report'
+import { OfficialReport, officialTitle } from './official-report'
 import { ReportImageProvider } from './report-image-context'
 import { getGenderedLabels } from '@/lib/gender'
 import type { PrintConfig } from '@/store/app-store'
@@ -61,6 +61,8 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
 
   const footer = <PrintFooter name={user.name} year={year.label} />
   const rootStyle: React.CSSProperties = { fontFamily: 'var(--font-readex), Tahoma, sans-serif', color: RC.ink }
+  /** ترويسة الجهة الرسمية أعلى أول صفحة — بلا كتلة عنوان (العنوان يأتي من قالب التقرير نفسه) */
+  const orgHeader = <OfficialDocHeader user={user} year={year.label} mode="org" />
 
   /* ═══ القالب 6 — التقرير الرسمي للإنجاز (إنجاز واحد) ═══ */
   if (config.mode === 'official') {
@@ -95,7 +97,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
     return (
       <div dir="rtl" style={rootStyle}>
         {footer}
-        <Cover name={user.name} school={user.school} subject={user.subject} year={year.label} completion={completion.overall} date={dateStr} gender={user.gender} />
+        <Cover name={user.name} school={user.school} subject={user.subject} year={year.label} completion={completion.overall} date={dateStr} gender={user.gender} educationAdmin={user.educationAdmin} educationOffice={user.educationOffice} />
         <Toc items={tocItems} />
 
         {includedSections.map((s, i) => {
@@ -217,8 +219,19 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
             if (s.key === 'initiatives') stats.push({ label: 'إجمالي المستفيدين', value: formatNumber(totalBeneficiaries) })
             content = items.length ? (
               <div style={{ paddingTop: S.s4 }}>
+                {/* كل إنجاز = تقرير مستقل: يبدأ أعلى صفحة A4 جديدة بترويسته الرسمية —
+                    عدا الأول الذي يتبع فاصل القسم مباشرة — ومحتواه الطويل يتدفق طبيعيًا */}
                 {items.map((a, idx) => (
-                  <AchievementCase key={a.id} a={a} index={idx + 1} />
+                  <ReportDocumentSection
+                    key={a.id}
+                    first={idx === 0}
+                    user={user}
+                    year={year.label}
+                    title={officialTitle(a.type)}
+                    dateText={a.date ? formatDate(a.date) : undefined}
+                  >
+                    <AchievementCase a={a} index={idx + 1} />
+                  </ReportDocumentSection>
                 ))}
               </div>
             ) : <EmptyNote label={`لا توجد عناصر موثقة في ${s.title}`} />
@@ -241,6 +254,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
       <div dir="rtl" style={rootStyle}>
         {footer}
         <div className="print-page" style={{ paddingTop: S.s4 }}>
+          {orgHeader}
           <ReportHeader
             title="ملخص ملف الإنجاز"
             subtitle={`${user.name} — ${user.subject ? `${getGenderedLabels(user.gender).teacher} ${user.subject} — ` : ''}${user.school ?? ''} — ${year.label}`}
@@ -261,6 +275,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
       <div dir="rtl" style={rootStyle}>
         {footer}
         <div className="print-page" style={{ paddingTop: S.s4 }}>
+          {orgHeader}
           <ReportHeader
             title="تقرير الأثر المهني"
             subtitle={`${user.name} — ${user.subject ? `${getGenderedLabels(user.gender).teacher} ${user.subject} — ` : ''}${year.label} — أثر الممارسات مقيسًا بالقياس القبلي والبعدي`}
@@ -277,7 +292,17 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
                 لكل تدخل تعليمي: المشكلة وخط الأساس، ثم التدخل، فالنتيجة المقيسة والدليل — {scored.length} قياسات بمتوسط تحسن {completion.counts.avgImprovement !== null ? `+${formatNumber(completion.counts.avgImprovement)}%` : 'غير محدد'}.
               </p>
               {scored.map((a, idx) => (
-                <AchievementCase key={a.id} a={a} index={idx + 1} fields={['problem', 'goalText', 'execution', 'results', 'impact']} />
+                <ReportDocumentSection
+                  key={a.id}
+                  first={idx === 0}
+                  headerMode={idx === 0 ? 'title' : 'full'}
+                  user={user}
+                  year={year.label}
+                  title={officialTitle(a.type)}
+                  dateText={a.date ? formatDate(a.date) : undefined}
+                >
+                  <AchievementCase a={a} index={idx + 1} fields={['problem', 'goalText', 'execution', 'results', 'impact']} />
+                </ReportDocumentSection>
               ))}
             </div>
           )}
@@ -293,6 +318,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
       <div dir="rtl" style={rootStyle}>
         {footer}
         <div className="print-page" style={{ paddingTop: S.s4 }}>
+          {orgHeader}
           <ReportHeader
             title="تقرير التطوير المهني"
             subtitle={`${user.name} — ${user.school ?? ''} — ${year.label} — البرامج التدريبية وساعاتها وأثرها على الممارسة`}
@@ -359,6 +385,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
       <div dir="rtl" style={rootStyle}>
         {footer}
         <div className="print-page" style={{ paddingTop: S.s4 }}>
+          {orgHeader}
           <ReportHeader
             title="تقرير المبادرات"
             subtitle={`${user.name} — ${user.school ?? ''} — ${year.label} — المبادرات القيادية وأثرها على المجتمع المدرسي`}
@@ -375,7 +402,17 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
                 {initItems.length} مبادرات استفاد منها {formatNumber(totalBeneficiaries)} من الطلبة وأولياء الأمور والمجتمع المدرسي — لكل مبادرة: المشكلة والهدف والتنفيذ والأثر مع الشواهد.
               </p>
               {initItems.map((a, idx) => (
-                <AchievementCase key={a.id} a={a} index={idx + 1} fields={['problem', 'goalText', 'execution', 'results', 'impact', 'notes']} />
+                <ReportDocumentSection
+                  key={a.id}
+                  first={idx === 0}
+                  headerMode={idx === 0 ? 'title' : 'full'}
+                  user={user}
+                  year={year.label}
+                  title={officialTitle(a.type)}
+                  dateText={a.date ? formatDate(a.date) : undefined}
+                >
+                  <AchievementCase a={a} index={idx + 1} fields={['problem', 'goalText', 'execution', 'results', 'impact', 'notes']} />
+                </ReportDocumentSection>
               ))}
             </div>
           )}
@@ -385,6 +422,32 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
   }
 
   return null
+}
+
+/* ═══ اسم ملف PDF ذكي — تقرير-خطة-علاجية-1448هـ بدل report.pdf ═══ */
+
+function slugify(s: string): string {
+  return s.trim().replace(/[\s/\\:]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+}
+
+function reportFileName(config: PrintConfig, data: ReportData): string {
+  const y = slugify(data.year.label ?? '')
+  let base = 'report'
+  if (config.mode === 'official') {
+    const a = data.achievements.find((x) => x.id === config.achievementId)
+    base = a ? slugify(officialTitle(a.type)) : 'تقرير-إنجاز'
+  } else {
+    base = {
+      full: 'ملف-إنجاز',
+      summary: 'ملخص-ملف-الإنجاز',
+      impact: 'تقرير-الأثر-المهني',
+      pd: 'تقرير-التطوير-المهني',
+      initiatives: 'تقرير-المبادرات',
+      custom: slugify(config.title) || 'تقرير-مخصص',
+      official: 'تقرير',
+    }[config.mode] ?? 'report'
+  }
+  return y ? `${base}-${y}` : base
 }
 
 /* ═══ غلاف الطباعة — يفعّل نافذة الطباعة بعد اكتمال الصور ═══ */
@@ -397,6 +460,7 @@ export function ReportPrint() {
   useEffect(() => {
     if (!config || !data || error) return
     let cancelled = false
+    let prevTitle: string | null = null
 
     const t = setTimeout(async () => {
       const root = document.getElementById('print-root')
@@ -407,15 +471,20 @@ export function ReportPrint() {
         ),
       )
       if (cancelled) return
+      // اسم ملف ذكي لحفظ PDF (المتصفح يضيف الامتداد تلقائيًا) — يُستعاد العنوان الأصلي بعد الطباعة
+      prevTitle = document.title
+      document.title = reportFileName(config, data)
       window.print()
     }, 900)
 
     const after = () => {
+      if (prevTitle !== null) { document.title = prevTitle; prevTitle = null }
       setTimeout(() => { if (!cancelled) setPrintConfig(null) }, 600)
     }
     window.addEventListener('afterprint', after)
     return () => {
       cancelled = true
+      if (prevTitle !== null) document.title = prevTitle
       clearTimeout(t)
       window.removeEventListener('afterprint', after)
     }

@@ -9,6 +9,7 @@ import { Icon } from '@/components/shared/icon'
 import { AiAssistButton, type AiAssistContext } from '@/components/shared/ai-assist'
 import { AttachmentsEditor } from './attachments-editor'
 import { HijriDateField } from '@/components/shared/hijri-date-picker'
+import { officialTitle } from '@/components/report/official-report'
 import { improvement, formatNumber, toDateInput } from '@/lib/format'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -90,6 +91,8 @@ export function AchievementSheet() {
   const closeForm = useApp((s) => s.closeForm)
   const formType = useApp((s) => s.formType)
   const formAchievementId = useApp((s) => s.formAchievementId)
+  const setPreviewConfig = useApp((s) => s.setPreviewConfig)
+  const setPrintConfig = useApp((s) => s.setPrintConfig)
   const { yearId, readonly } = useScope()
   const qc = useQueryClient()
 
@@ -110,6 +113,16 @@ export function AchievementSheet() {
   const { data: goalsData } = useAchievements()
   const goals = goalsData?.goals ?? []
   const { data: sessionData } = useSession()
+
+  /** إجراءات التقرير الرسمي من النموذج — إبطال كاش التقرير أولًا (المسودة تُحفظ تلقائيًا
+   *  بلا إبطال) حتى تعكس المعاينة/الطباعة آخر ما كُتب، ثم فتح نفس مسار التقارير المعتمد */
+  const openReportAction = (kind: 'preview' | 'print') => {
+    if (!id || !type) return
+    const config = { mode: 'official' as const, sections: [] as string[], title: officialTitle(type), achievementId: id }
+    qc.invalidateQueries({ queryKey: ['report'] })
+    if (kind === 'preview') setPreviewConfig(config)
+    else setPrintConfig(config)
+  }
 
   /** سياق المساعد الذكي المشترك — من بيانات المستخدم والنموذج الحالي */
   const aiContext = useCallback((key?: string): AiAssistContext => ({
@@ -632,6 +645,38 @@ export function AchievementSheet() {
                 )}
               </div>
             </div>
+
+            {/* إجراءات التقرير الرسمي — نهاية النموذج، متاحة بعد أول حفظ (مسودة فأعلى).
+                المعاينة طبقة فوق النموذج والعودة للتعديل لا تفقد شيئًا — النموذج يبقى محمّلاً بحالته.
+                يُبطَل كاش التقرير أولًا حتى تعكس المعاينة آخر ما كُتب (المسودة تُحفظ تلقائيًا). */}
+            {id && type && (
+              <div className="mt-6 rounded-2xl border border-primary/20 bg-secondary/40 p-3.5">
+                <p className="text-xs font-semibold text-foreground">إجراءات التقرير الرسمي لهذا التوثيق:</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => openReportAction('preview')}
+                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    <Icon name="Eye" className="size-4 text-primary" />
+                    معاينة
+                  </button>
+                  <button
+                    onClick={() => openReportAction('print')}
+                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    <Icon name="Download" className="size-4 text-primary" />
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => openReportAction('print')}
+                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    <Icon name="Printer" className="size-4 text-primary" />
+                    طباعة
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* التذييل — ثابت أسفل الشاشة فوق لوحة المفاتيح وشريط النظام */}
             {!viewMode && (

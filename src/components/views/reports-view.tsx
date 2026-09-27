@@ -11,6 +11,7 @@ import { formatNumber, formatDateShort } from '@/lib/format'
 import { officialTitle } from '@/components/report/official-report'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import type { PrintConfig } from '@/store/app-store'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -65,6 +66,7 @@ const REPORTS: ReportDef[] = [
 
 export function ReportsView() {
   const setPreviewConfig = useApp((s) => s.setPreviewConfig)
+  const setPrintConfig = useApp((s) => s.setPrintConfig)
   const { data, isLoading, error, refetch } = useReport()
   const [selected, setSelected] = useState<string[]>([])
   const [officialId, setOfficialId] = useState<string>('')
@@ -85,29 +87,48 @@ export function ReportsView() {
   const counts = completion.counts
   const hasData = counts.achievements > 0
 
-  /** الإجراء الأساسي لكل القوالب: المعاينة أولًا — ومنها التنزيل */
-  const preview = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
-    if (!hasData) {
-      toast.info('أضف إنجازًا واحدًا على الأقل حتى يستحق التقرير الطباعة')
-      return
-    }
+  /** الإجراءات الأساسية بعد إعداد التقرير — معاينة أولًا، ومنها التنزيل والطباعة.
+   *  التنزيل والطباعة يفتحان نافذة الطباعة بنفس مكونات المعاينة (Preview = Print = PDF):
+   *  «تنزيل PDF» → حفظ بصيغة PDF، «طباعة» → الطابعة مباشرة — الوجهة اختيار المستخدم في النافذة نفسها. */
+  const buildConfig = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string): PrintConfig => {
     const def = REPORTS.find((r) => r.key === mode)!
-    if (mode === 'custom' && sections.length === 0) {
-      toast.error('اختر مجالًا واحدًا على الأقل للتصدير المخصص')
-      return
-    }
-    if (mode === 'official' && !achievementId) {
-      toast.error('اختر الإنجاز المراد إصدار التقرير الرسمي له')
-      return
-    }
-    setPreviewConfig({
+    return {
       mode,
       sections,
       title: mode === 'official' && achievementId
         ? officialTitle(achievements.find((a) => a.id === achievementId)?.type ?? 'OTHER')
         : def.title,
       achievementId,
-    })
+    }
+  }
+
+  /** التحققات نفسها لكل الإجراءات — تعيد false عند وجود مانع مع toast واضح */
+  const guard = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string): boolean => {
+    if (!hasData) {
+      toast.info('أضف إنجازًا واحدًا على الأقل حتى يستحق التقرير الطباعة')
+      return false
+    }
+    if (mode === 'custom' && sections.length === 0) {
+      toast.error('اختر مجالًا واحدًا على الأقل للتصدير المخصص')
+      return false
+    }
+    if (mode === 'official' && !achievementId) {
+      toast.error('اختر الإنجاز المراد إصدار التقرير الرسمي له')
+      return false
+    }
+    return true
+  }
+
+  /** الإجراء الأساسي لكل القوالب: المعاينة أولًا — ومنها التنزيل */
+  const preview = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
+    if (!guard(mode, sections, achievementId)) return
+    setPreviewConfig(buildConfig(mode, sections, achievementId))
+  }
+
+  /** التنزيل/الطباعة المباشرة من البطاقة — نفس مكونات المعاينة حرفيًا */
+  const exportDirect = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
+    if (!guard(mode, sections, achievementId)) return
+    setPrintConfig(buildConfig(mode, sections, achievementId))
   }
 
   return (
@@ -210,15 +231,38 @@ export function ReportsView() {
                 </div>
               )}
 
-              <Button
-                onClick={() => preview(r.key, selected, officialId)}
-                disabled={!hasData}
-                className="mt-4 min-h-11 w-full gap-2 rounded-full shadow-soft"
-                variant={r.key === 'full' || r.key === 'official' ? 'default' : 'outline'}
-              >
-                <Icon name="Eye" className="size-4" />
-                معاينة التقرير
-              </Button>
+              {/* الإجراءات الأساسية — ظاهرة مباشرة لا داخل قائمة نقاط:
+                  سطح المكتب صف واحد، الجوال: معاينة كاملة ثم صف PDF/طباعة */}
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <Button
+                  onClick={() => preview(r.key, selected, officialId)}
+                  disabled={!hasData}
+                  className="col-span-2 min-h-11 w-full gap-2 rounded-full shadow-soft sm:col-span-1 sm:w-auto sm:flex-1"
+                  variant={r.key === 'full' || r.key === 'official' ? 'default' : 'outline'}
+                >
+                  <Icon name="Eye" className="size-4" />
+                  معاينة التقرير
+                </Button>
+                <Button
+                  onClick={() => exportDirect(r.key, selected, officialId)}
+                  disabled={!hasData}
+                  variant="outline"
+                  className="min-h-11 gap-2 rounded-full"
+                >
+                  <Icon name="Download" className="size-4" />
+                  <span className="hidden min-[380px]:inline">تنزيل PDF</span>
+                  <span className="min-[380px]:hidden">PDF</span>
+                </Button>
+                <Button
+                  onClick={() => exportDirect(r.key, selected, officialId)}
+                  disabled={!hasData}
+                  variant="outline"
+                  className="min-h-11 gap-2 rounded-full"
+                >
+                  <Icon name="Printer" className="size-4" />
+                  طباعة
+                </Button>
+              </div>
             </div>
           </div>
         ))}

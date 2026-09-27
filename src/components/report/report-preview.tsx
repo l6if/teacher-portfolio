@@ -55,15 +55,25 @@ function computePages(container: HTMLElement): PageInfo[] {
     return { top: r.top - cRect.top, bottom: r.bottom - cRect.top }
   }
 
-  // فواصل قسرية: بداية صفحة إلزامية
+  // عناصر نصية — لتمييز صفحة الشبح (فراغ بين فاصلين قسريين) عن فائض محتوى حقيقي
+  const textEls: { top: number; bottom: number }[] = []
+  container.querySelectorAll('p, h1, h2, h3, h4, li, td, span').forEach((el) => {
+    if (!el.textContent?.trim()) return
+    const s = spanOf(el)
+    if (s.bottom > EPS && s.top < totalH - EPS) textEls.push(s)
+  })
+
+  // فواصل قسرية: بداية صفحة إلزامية — فاصل قسم أو بداية تقرير مستقل جديد
   const forced: number[] = []
-  container.querySelectorAll('.print-section-cover').forEach((el) => {
+  container.querySelectorAll('.print-section-cover, .print-report-start').forEach((el) => {
     const { top } = spanOf(el)
     if (top > EPS && top < totalH - EPS) forced.push(top)
   })
+  // نهاية print-page تفرض صفحة تالية فقط إن وُجد نص فعلي بعدها —
+  // محاكاة قاعدة :last-child في CSS الطباعة التي تلغي فاصل آخر عنصر
   container.querySelectorAll('.print-page').forEach((el) => {
     const { bottom } = spanOf(el)
-    if (bottom > EPS && bottom < totalH - EPS) forced.push(bottom)
+    if (bottom > EPS && bottom < totalH - EPS && textEls.some((t) => t.top > bottom + EPS)) forced.push(bottom)
   })
   forced.sort((a, b) => a - b)
 
@@ -76,21 +86,19 @@ function computePages(container: HTMLElement): PageInfo[] {
     if (s.bottom - s.top > EPS && s.bottom > EPS && s.top < totalH - EPS) atomics.push(s)
   })
 
-  // عناصر نصية — لتمييز صفحة الشبح (فراغ بين فاصلين قسريين) عن فائض محتوى حقيقي
-  const textEls: { top: number; bottom: number }[] = []
-  container.querySelectorAll('p, h1, h2, h3, h4, li, td, span').forEach((el) => {
-    if (!el.textContent?.trim()) return
-    const s = spanOf(el)
-    if (s.bottom > EPS && s.top < totalH - EPS) textEls.push(s)
-  })
-
   const pages: PageInfo[] = []
   let start = 0
   let startWasForced = true // الصفحة الأولى تبدأ عند فاصل ضمني (بداية المستند)
   let guard = 0
   while (start < totalH - EPS && guard++ < 400) {
     const limit = start + CONTENT_H
-    if (limit >= totalH - EPS) {
+
+    // فاصل قسري داخل هذه الصفحة؟ الصفحة تنتهي عنده — ويُفحص حتى قرب نهاية المستند:
+    // بداية تقرير مستقل تفرض صفحة جديدة كاملة حتى لو كان المتبقي بعدها يفي بأقل من صفحة
+    const forcedHit = forced.find((f) => f > start + EPS && f <= Math.min(limit, totalH) - EPS)
+
+    // آخر صفحة: لا فاصل قسري بعدها والمتبقي يتسع في صفحة واحدة
+    if (limit >= totalH - EPS && forcedHit === undefined) {
       pages.push({ start, height: Math.max(totalH - start, 10) })
       break
     }
@@ -98,9 +106,8 @@ function computePages(container: HTMLElement): PageInfo[] {
     let end = limit
     let endWasForced = false
 
-    // فاصل قسري داخل هذه الصفحة؟ الصفحة تنتهي عنده
-    const forcedHit = forced.find((f) => f > start + EPS && f <= end - EPS)
     if (forcedHit !== undefined) {
+      // فاصل قسري داخل هذه الصفحة — الصفحة تنتهي عنده
       end = forcedHit
       endWasForced = true
     } else {
@@ -333,6 +340,12 @@ export function ReportPreview() {
     setPrintConfig(previewConfig) // نفس الإعداد → نفس المكونات → PDF مطابق
   }
 
+  /** الطباعة المباشرة — نفس مسار PDF: نافذة الطباعة تطبع التقرير وحده (بلا واجهة التطبيق) */
+  const print = () => {
+    if (!previewConfig) return
+    setPrintConfig(previewConfig)
+  }
+
   const back = () => setPreviewConfig(null)
 
   const previewTitle = previewConfig?.title
@@ -364,6 +377,11 @@ export function ReportPreview() {
             <Icon name="ZoomIn" className="size-4" />
           </button>
         </div>
+        {/* طباعة — تطبع التقرير وحده عبر #print-root */}
+        <Button onClick={print} className="min-h-10 gap-2 rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-bold text-white hover:bg-white/20 sm:px-4">
+          <Icon name="Printer" className="size-4" />
+          <span className="hidden sm:inline">طباعة</span>
+        </Button>
         <Button onClick={download} className="min-h-10 gap-2 rounded-xl bg-white px-4 text-sm font-bold text-emerald-900 hover:bg-emerald-50">
           <Icon name="Download" className="size-4" />
           <span className="hidden sm:inline">تنزيل PDF</span>
@@ -371,7 +389,7 @@ export function ReportPreview() {
         </Button>
       </div>
     </div>
-  ), [s, isFit, previewTitle, back, download])
+  ), [s, isFit, previewTitle, back, download, print])
 
   if (!open || !previewConfig) return null
 

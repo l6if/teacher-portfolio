@@ -6,7 +6,7 @@ import { useReport } from '@/hooks/use-data'
 import { SECTIONS, TYPE_LABEL, STATUS_LABEL } from '@/lib/constants'
 import { formatDate, formatNumber, improvement } from '@/lib/format'
 import { LoadingState, ErrorState } from '@/components/shared/states'
-import { RC, S, RT, RR, REPORT_BRAND, FIELD_LABELS, footerLine } from '@/lib/report-tokens'
+import { RC, S, RT, RR, REPORT_BRAND, FIELD_LABELS, footerLine, schoolLine, educationAdminLine, educationOfficeLine } from '@/lib/report-tokens'
 import { useReportImages } from './report-image-context'
 import { getGenderedLabels } from '@/lib/gender'
 import type { TAchievement, TAttachment } from '@/lib/types'
@@ -214,16 +214,162 @@ export function SectionDivider({ num, title, desc, stats }: { num: number; title
   )
 }
 
+/* ═══ الترويسة الرسمية — كل تقرير مستقل يبدأ بها ═══════════ */
+
+/** شعار وزارة التعليم — قابل للإعداد من REPORT_BRAND.ministryLogo،
+ *  والافتراضي شعار هندسي رسمي (نخلة فوق كتاب مفتوح داخل حلقتين) بلون واحد مناسب للطباعة */
+export function MinistryLogo({ size = 58 }: { size?: number }) {
+  if (REPORT_BRAND.ministryLogo) {
+    return <img src={REPORT_BRAND.ministryLogo} alt="" style={{ width: size, height: size, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+  }
+  const c = RC.primary
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" style={{ flexShrink: 0, display: 'block' }}>
+      <circle cx="32" cy="32" r="30" fill="none" stroke={c} strokeWidth="1.5" />
+      <circle cx="32" cy="32" r="26.8" fill="none" stroke={c} strokeWidth="0.5" opacity="0.55" />
+      {/* النخلة — جذع وسعفات */}
+      <g fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round">
+        <path d="M32 37.5 C31.3 32 31.3 28 32 23.5" />
+        <path d="M32 23.5 C27 20 22 20.5 19.5 23.5" />
+        <path d="M32 23.5 C37 20 42 20.5 44.5 23.5" />
+        <path d="M32 23 C29 18.5 24.5 17.5 21 19.5" />
+        <path d="M32 23 C35 18.5 39.5 17.5 43 19.5" />
+        <path d="M32 22.5 C30.6 18.8 30.8 16 32 14" />
+      </g>
+      <path d="M26 38.5 L38 38.5" stroke={c} strokeWidth="1.4" strokeLinecap="round" fill="none" />
+      {/* الكتاب المفتوح */}
+      <path d="M19 44.5 Q25.5 40.8 32 44.5 Q38.5 40.8 45 44.5 L45 50.5 Q38.5 47 32 50.5 Q25.5 47 19 50.5 Z" fill={c} opacity="0.92" />
+      <path d="M32 44.5 L32 50.5" stroke="#fff" strokeWidth="1.1" />
+    </svg>
+  )
+}
+
+/** سطور الجهة الرسمية — المملكة/الوزارة/الإدارة/المكتب/المدرسة، كلها من بيانات المستخدم.
+ *  السطر غير الموجود يُحذف كليًا ويعاد توزيع الباقي — بلا فراغات وبلا أسماء افتراضية. */
+export function orgHeaderLines(user: { school?: string | null; educationAdmin?: string | null; educationOffice?: string | null }): { text: string; strong?: boolean }[] {
+  return [
+    { text: 'المملكة العربية السعودية', strong: true },
+    { text: 'وزارة التعليم' },
+    { text: educationAdminLine(user.educationAdmin) ?? '' },
+    { text: educationOfficeLine(user.educationOffice) ?? '' },
+    { text: schoolLine(user.school) ?? '' },
+  ].filter((l) => l.text !== '')
+}
+
+/** الترويسة الرسمية التعليمية — شعار الوزارة أعلى اليمين + سطور الجهة + العام الدراسي.
+ *  mode='full'  : الترويسة + كتلة عنوان التقرير (لكل تقرير مستقل جديد).
+ *  mode='org'   : الترويسة فقط (أول صفحة لتقرير متعدد العناصر أو قالب موحّد).
+ *  mode='title' : كتلة العنوان فقط (أول عنصر بعد ترويسة المستند المفتوحة أعلى الصفحة). */
+export function OfficialDocHeader({ user, year, title, dateText, mode = 'full' }: {
+  user: ReportData['user']
+  year: string
+  title?: string
+  dateText?: string
+  mode?: 'full' | 'org' | 'title'
+}) {
+  const labels = getGenderedLabels(user.gender)
+  const org = orgHeaderLines(user)
+  return (
+    <div className="print-avoid-break" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'avoid' }}>
+      {mode !== 'title' && (
+        <>
+          {/* صف الجهة: الشعار أعلى اليمين + السطور الرسمية + العام الدراسي في الطرف المقابل */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: S.s4 }}>
+            <MinistryLogo size={mode === 'org' ? 54 : 58} />
+            <div style={{ flex: 1, textAlign: 'right', minWidth: 0, paddingTop: '1mm' }}>
+              {org.map((l, i) => (
+                <p key={i} style={{
+                  margin: 0,
+                  ...RT.caption,
+                  fontSize: i === 0 ? '9.5px' : '9px',
+                  fontWeight: l.strong ? 700 : 500,
+                  color: i === 0 || l.strong && i === org.length - 1 ? RC.ink : RC.muted,
+                  lineHeight: 1.9,
+                }}>
+                  {l.text}
+                </p>
+              ))}
+            </div>
+            <p style={{ margin: 0, ...RT.caption, color: RC.muted, whiteSpace: 'nowrap', paddingTop: '1mm' }}>العام الدراسي {year}</p>
+          </div>
+          {/* حد مزدوج رسمي */}
+          <div style={{ marginTop: S.s3 }}>
+            <Rule weight="1.6px" color={RC.primaryDeep} />
+            <div style={{ height: '0.8mm' }} />
+            <Rule weight="0.6px" color={RC.lineStrong} />
+          </div>
+        </>
+      )}
+      {title && mode !== 'org' && (
+        <>
+          {/* عنوان التقرير + سطر التعريف */}
+          <div style={{ textAlign: 'center', marginTop: mode === 'title' ? 0 : S.s4 }}>
+            <p style={{ margin: 0, ...RT.caption, color: RC.primaryDeep, letterSpacing: '0.16em' }}>تقرير تنفيذ رسمي</p>
+            <h1 style={{ margin: `${S.s2} 0 0`, ...RT.h1, color: RC.ink, fontSize: '23px' }}>{title}</h1>
+            <p style={{ margin: `${S.s2} 0 0`, ...RT.caption, color: RC.muted }}>
+              {user.subject ? `${labels.teacher} ${user.subject}` : labels.teacher}:{' '}
+              <span style={{ color: RC.inkSoft, fontWeight: 700 }}>{user.name}</span>
+              <span> • </span>
+              العام الدراسي {year}
+              {dateText ? (<><span> • </span>{dateText}</>) : null}
+            </p>
+          </div>
+          <Rule margin={`${S.s4} 0 0`} weight="0.6px" color={RC.lineStrong} />
+        </>
+      )}
+    </div>
+  )
+}
+
+/** غلاف كل تقرير مستقل داخل قائمة — يفرض صفحة A4 جديدة لكل تقرير (عدا الأول)،
+ *  ويسمح لمحتواه الطويل بالتدفق عبر صفحات متعددة (بلا break-inside: avoid على المستوى كله).
+ *  الترويسة الرسمية + عنوان التقرير يبقيان مع بداية التقرير (avoid-break على كتلة الترويسة فقط). */
+export function ReportDocumentSection({ first = false, headerMode = 'full', user, year, title, dateText, children }: {
+  first?: boolean
+  headerMode?: 'full' | 'title' | 'none'
+  user: ReportData['user']
+  year: string
+  title?: string
+  dateText?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section
+      className={first ? undefined : 'print-report-start'}
+      style={first ? undefined : { pageBreakBefore: 'always', breakBefore: 'page' }}
+    >
+      {headerMode !== 'none' && (
+        <OfficialDocHeader user={user} year={year} title={title} dateText={dateText} mode={headerMode === 'title' ? 'title' : 'full'} />
+      )}
+      {children}
+    </section>
+  )
+}
+
 /** الغلاف — تخطيط تحريري غير متمركز مع عنصر هندسي بسيط */
-export function Cover({ name, school, subject, year, completion, date, gender }: { name: string; school?: string | null; subject?: string | null; year: string; completion: number; date: string; gender?: 'MALE' | 'FEMALE' | null }) {
+export function Cover({ name, school, subject, year, completion, date, gender, educationAdmin, educationOffice }: { name: string; school?: string | null; subject?: string | null; year: string; completion: number; date: string; gender?: 'MALE' | 'FEMALE' | null; educationAdmin?: string | null; educationOffice?: string | null }) {
   const teacherLabel = getGenderedLabels(gender).teacher
+  const org = orgHeaderLines({ school, educationAdmin, educationOffice })
   return (
     <div className="print-page" style={{ display: 'flex', flexDirection: 'column', minHeight: '245mm', paddingTop: S.s4 }}>
-      {/* شريط التعريف العلوي */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6mm' }}>
-        <p style={{ margin: 0, ...RT.caption, color: RC.muted }}>المملكة العربية السعودية</p>
-        <p style={{ margin: 0, ...RT.caption, color: RC.ink }}>وزارة التعليم{school ? ` — ${school}` : ''}</p>
-        <p style={{ margin: 0, ...RT.caption, color: RC.muted }}>العام الدراسي {year}</p>
+      {/* شريط التعريف العلوي — ترويسة رسمية: الشعار أعلى اليمين + سطور الجهة + العام الدراسي */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: S.s4 }}>
+        <MinistryLogo size={46} />
+        <div style={{ flex: 1, textAlign: 'right', minWidth: 0 }}>
+          {org.map((l, i) => (
+            <p key={i} style={{
+              margin: 0,
+              ...RT.caption,
+              fontSize: i === 0 ? '9.5px' : '9px',
+              fontWeight: l.strong ? 700 : 500,
+              color: i === 0 || (l.strong && i === org.length - 1) ? RC.ink : RC.muted,
+              lineHeight: 1.9,
+            }}>
+              {l.text}
+            </p>
+          ))}
+        </div>
+        <p style={{ margin: 0, ...RT.caption, color: RC.muted, whiteSpace: 'nowrap' }}>العام الدراسي {year}</p>
       </div>
       <Rule margin={`${S.s3} 0 0`} />
 

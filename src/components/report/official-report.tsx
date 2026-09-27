@@ -18,7 +18,7 @@
 import { TYPE_LABEL } from '@/lib/constants'
 import { formatDate, formatNumber } from '@/lib/format'
 import { RC, S, RT, RR, REPORT_BRAND } from '@/lib/report-tokens'
-import { Rule, Gallery, BeforeAfter, DocChip } from './report-parts'
+import { Rule, Gallery, BeforeAfter, DocChip, OfficialDocHeader } from './report-parts'
 import { useReportImages } from './report-image-context'
 import type { TAchievement, TAttachment } from '@/lib/types'
 import type { ReportData } from '@/hooks/use-data'
@@ -71,82 +71,6 @@ function SectionTitle({ children, first = false }: { children: React.ReactNode; 
         <h2 style={{ margin: 0, ...RT.h2, color: RC.ink, fontSize: '14.5px' }}>{children}</h2>
       </div>
       <Rule margin={`${S.s1} 0 ${S.s3}`} color={RC.lineStrong} weight="0.8px" />
-    </div>
-  )
-}
-
-/* ─── الترويسة الرسمية ─────────────────────────────────────── */
-
-function OfficialHeader({ user, year, title, dateText }: {
-  user: ReportData['user']
-  year: string
-  title: string
-  dateText: string
-}) {
-  // سطور الجهة اليمنى — كل سطر اختياري ويُحذف مع بياناته الفارغة
-  const orgLines = [
-    'المملكة العربية السعودية',
-    'وزارة التعليم',
-    user.educationAdmin,
-    user.educationOffice,
-    user.school,
-  ].filter((x): x is string => Boolean(x))
-
-  return (
-    <div className="print-avoid-break" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'avoid' }}>
-      {/* صف الجهة + الشعار الهندسي */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: S.s6 }}>
-        <div style={{ textAlign: 'right' }}>
-          {orgLines.map((line, i) => (
-            <p key={i} style={{
-              margin: 0,
-              ...RT.caption,
-              fontSize: i === 0 ? '9.5px' : '9px',
-              fontWeight: i === 4 || (i === orgLines.length - 1 && user.school) ? 700 : 500,
-              color: i === 0 ? RC.ink : RC.muted,
-              lineHeight: 1.9,
-            }}>
-              {line}
-            </p>
-          ))}
-        </div>
-        {/* الشعار — عنصر هندسي بروح رسمية (نقطة استبدال REPORT_BRAND.logo) */}
-        {REPORT_BRAND.logo ? (
-          <img src={REPORT_BRAND.logo} alt="" style={{ width: '17mm', height: '17mm', objectFit: 'contain' }} />
-        ) : (
-          <svg width="62" height="62" viewBox="0 0 62 62" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <circle cx="31" cy="31" r="29" fill="none" stroke={RC.primary} strokeWidth="1" opacity="0.5" />
-            <circle cx="31" cy="31" r="22" fill="none" stroke={RC.primary} strokeWidth="0.9" opacity="0.8" />
-            {/* كتاب مفتوح مبسط */}
-            <path d="M18 37 Q25 33 31 37 Q37 33 44 37 L44 25 Q37 21 31 25 Q25 21 18 25 Z" fill={RC.primary} opacity="0.9" />
-            <line x1="31" y1="25" x2="31" y2="37" stroke="#fff" strokeWidth="1.1" />
-            <circle cx="31" cy="15" r="2.2" fill={RC.primary} />
-          </svg>
-        )}
-      </div>
-
-      {/* حد مزدوج رسمي */}
-      <div style={{ marginTop: S.s3 }}>
-        <Rule weight="1.6px" color={RC.primaryDeep} />
-        <div style={{ height: '0.8mm' }} />
-        <Rule weight="0.6px" color={RC.lineStrong} />
-      </div>
-
-      {/* عنوان التقرير + سطر التعريف */}
-      <div style={{ textAlign: 'center', marginTop: S.s4 }}>
-        <p style={{ margin: 0, ...RT.caption, color: RC.primaryDeep, letterSpacing: '0.16em' }}>تقرير تنفيذ رسمي</p>
-        <h1 style={{ margin: `${S.s2} 0 0`, ...RT.h1, color: RC.ink, fontSize: '23px' }}>{title}</h1>
-        <p style={{ margin: `${S.s2} 0 0`, ...RT.caption, color: RC.muted }}>
-          {user.subject ? `${getGenderedLabels(user.gender).teacher} ${user.subject}` : getGenderedLabels(user.gender).teacher}:{' '}
-          <span style={{ color: RC.inkSoft, fontWeight: 700 }}>{user.name}</span>
-          <span> • </span>
-          العام الدراسي {year}
-          <span> • </span>
-          {dateText}
-        </p>
-      </div>
-
-      <Rule margin={`${S.s4} 0 0`} weight="0.6px" color={RC.lineStrong} />
     </div>
   )
 }
@@ -342,7 +266,8 @@ export function OfficialReport({ a, data }: { a: TAchievement; data: ReportData 
 
   return (
     <div className="print-page" style={{ paddingTop: S.s2 }}>
-      <OfficialHeader user={user} year={year.label} title={officialTitle(a.type)} dateText={dateText} />
+      {/* الترويسة الرسمية المشتركة — شعار الوزارة أعلى اليمين + سطور الجهة الديناميكية + عنوان التقرير */}
+      <OfficialDocHeader user={user} year={year.label} title={officialTitle(a.type)} dateText={dateText} />
       <InfoGrid a={a} user={user} />
       <Objectives a={a} />
       <ExecutionSection a={a} />
