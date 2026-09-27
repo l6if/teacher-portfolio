@@ -3,6 +3,9 @@
 // يحدد أي مجموعة pooler (aws-0/aws-1) تخدم المشروع فعليًا.
 import { readFileSync } from 'fs'
 
+// تعريف محلي محدود لـ Bun runtime (السكربت يُنفَّذ بـ bun فقط — التطبيق نفسه على Node)
+declare const Bun: { SQL: new (url: string) => any }
+
 const lines = readFileSync('.env.supabase-token', 'utf8').split('\n')
 const get = (k: string) =>
   lines.find((l) => l.startsWith(k + '='))?.split('=').slice(1).join('=')?.trim() ?? ''

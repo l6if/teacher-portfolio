@@ -16,7 +16,7 @@
 // ينشئ صفوفًا مؤقتة (معلم بمدرسة أخرى + مرفقان) ثم يمسحها — ويتأكد
 // في النهاية أن الأعداد القياسية عادت كما كانت (7/7/6/48/16/18/2/5 — شاملة مسؤول المنصة والديمو).
 
-import { PrismaClient } from '../.pg-client'
+import { loadPgClient } from './load-generated-client'
 
 const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000'
 const DB_URL = process.env.DATABASE_URL || ''
@@ -51,7 +51,7 @@ function deepScan(value: unknown, hits: string[]): void {
 }
 
 async function main() {
-  const db = new PrismaClient()
+  const db = loadPgClient()
   console.log(`═══ الانحدار الأمني ضد ${BASE} (قاعدة PostgreSQL) ═══\n`)
 
   // ─── تجهيز الصفوف المؤقتة ───

@@ -7,13 +7,26 @@
 //   bun scripts/pg-admin.ts sql    <dbname> "SELECT ..." (على قاعدة محددة)
 // الاتصال: postgresql://postgres@127.0.0.1:5433 — لا كلمات مرور مطبوعة.
 
+import { existsSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const HOST = process.env.PG_HOST || '127.0.0.1'
 const PORT = process.env.PG_PORT || '5433'
 const USER = process.env.PG_USER || 'postgres'
 const ADMIN_URL = `postgresql://${USER}@${HOST}:${PORT}/postgres`
 
 async function client(url: string) {
-  const { PrismaClient } = (await import('../.pg-client/index.js')) as {
+  process.env.DATABASE_URL = url
+  const entry = resolve(ROOT, '.pg-client', 'index.js')
+  if (!existsSync(entry)) {
+    console.error('⛔ عميل .pg-client غير مولّد — شغّل أولًا: bun scripts/use-db.ts pg-tools')
+    process.exit(1)
+  }
+  // مسار متغير = فحص نوعي نظيف على نسخة جديدة من المستودع (بلا TS2307)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PrismaClient } = require(entry) as {
     PrismaClient: new () => {
       $queryRaw: any
       $executeRaw: any
@@ -22,7 +35,6 @@ async function client(url: string) {
       $disconnect: () => Promise<void>
     }
   }
-  process.env.DATABASE_URL = url
   return new PrismaClient()
 }
 
