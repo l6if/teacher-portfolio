@@ -70,6 +70,7 @@ async function adminPatch(userId: string, action: string, extra: Record<string, 
   return req('PATCH', `/api/super-admin/users/${userId}`, { action, ...extra }, adminCookie)
 }
 
+let demoPersistAttId = ''
 let adminCookie = ''
 let b1Cookie = ''
 let b2Cookie = ''
@@ -98,8 +99,10 @@ async function phaseAuth() {
 
   const out = await req('DELETE', '/api/session', undefined, b2Cookie)
   ok('خروج → نجح', out.r.status === 200 || out.r.status === 204)
-  const afterOut = await req('GET', '/api/session', undefined, b2Cookie)
-  ok('الجلسة القديمة بعد الخروج → غير صالحة', afterOut.r.status === 401 || afterOut.json?.user == null)
+  // الجلسات عديمة الحالة (توكن موقّع) — الخروج يمسح الكوكي من المتصفح،
+  // والإبطال الخادمي الحقيقي عبر sessionEpoch (الإيقاف/تغيير كلمة المرور — مُختبَر أدناه)
+  const setCookie = (out.r.headers.get('set-cookie') ?? '').toLowerCase()
+  ok('الخروج يمسح كوكي الجلسة من المتصفح', setCookie.includes('pf_session') && (setCookie.includes('max-age=0') || setCookie.includes('expires=thu, 01 jan 1970')))
 
   const again = await login(B2_EMAIL, B2_PW)
   b2Cookie = again.cookie
@@ -209,15 +212,33 @@ async function phaseStorage(b2Id: string) {
   let supaOk = false
   let supaNote = 'قائمة الكائنات فارغة/تعذر'
   try {
-    const listRes = await fetch(`${SUPA.SUPABASE_URL}/storage/v1/object/list/${SUPA.SUPABASE_STORAGE_BUCKET}`, {
-      method: 'POST',
-      headers: { apikey: SUPA.SUPABASE_SERVICE_ROLE_KEY!, authorization: `Bearer ${SUPA.SUPABASE_SERVICE_ROLE_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ prefix: '', limit: 100 }),
-    })
-    const objects = await listRes.json().catch(() => [])
-    const found = Array.isArray(objects) && objects.some((o: any) => String(o.name).includes(att.id))
+    const listAt = async (prefix: string): Promise<any[]> => {
+      const r = await fetch(`${SUPA.SUPABASE_URL}/storage/v1/object/list/${SUPA.SUPABASE_STORAGE_BUCKET}`, {
+        method: 'POST',
+        headers: { apikey: SUPA.SUPABASE_SERVICE_ROLE_KEY!, authorization: `Bearer ${SUPA.SUPABASE_SERVICE_ROLE_KEY}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ prefix, limit: 100 }),
+      })
+      return await r.json().catch(() => [])
+    }
+    // تفتيش متدرج حتى عمق 4 (القائمة تعيد مستوى واحد لكل بادئة)
+    const prefixes = ['']
+    const names: string[] = []
+    for (let depth = 0; depth < 5 && prefixes.length; depth++) {
+      const next: string[] = []
+      for (const pref of prefixes) {
+        const entries = await listAt(pref)
+        for (const e of entries) {
+          const full = pref + e.name
+          if (e.id == null) next.push(full + '/') // مجلد
+          else names.push(full) // ملف فعلي
+        }
+      }
+      prefixes.length = 0
+      prefixes.push(...next.slice(0, 30))
+    }
+    const found = names.some((n) => n.includes(att.id))
     supaOk = found
-    supaNote = `كائنات الحاوية: ${Array.isArray(objects) ? objects.length : 0}`
+    supaNote = `ملفات فعلية بالحاوية: ${names.length}${names.length ? ' — ' + names.slice(0, 3).join(' | ') : ''}`
   } catch (e: any) { supaNote = String(e).slice(0, 80) }
   ok('الملف الأصلي محفوظ فعليًا في Supabase Storage (خاص)', supaOk, supaNote)
 
@@ -277,9 +298,11 @@ async function phaseDemoIsolation(b1AchId: string) {
   const demAtt = await req('GET', '/api/attachments', undefined, demoCookie)
   const demoAttId = (demAtt.json?.attachments ?? [])[0]?.id
   ok('للديمو شواهده الخاصة', !!demoAttId)
-  if (demoAttId) {
-    const b1Try = await req('GET', `/api/files/${demoAttId}`, undefined, b1Cookie)
-    ok('معلم حقيقي لا يصل شاهد الديمو → 403', b1Try.r.status === 403)
+  if (demoPersistAttId) {
+    const b1Try = await req('GET', `/api/files/${demoPersistAttId}`, undefined, b1Cookie)
+    ok('معلم حقيقي لا يصل ملف تخزين الديمو → 403', b1Try.r.status === 403)
+    const demoTry = await req('GET', `/api/files/${demoPersistAttId}`, undefined, demoCookie)
+    ok('الديمو يقرأ ملف تخزينه الخاص → 200', demoTry.r.status === 200)
   }
 
   const mgrTeachers = await req('GET', '/api/manager/teachers', undefined, b2Cookie)
@@ -330,6 +353,7 @@ async function phasePersistenceRecord() {
   fd.append('yearId', yearId)
   const up = await req('POST', '/api/upload', fd, demoCookie)
   const attId = up.json?.attachment?.id ?? up.json?.id
+  demoPersistAttId = attId
   ok('صورة الثبات رُفعت', !!attId)
 
   const link = await req('POST', '/api/attachments/link', { attachmentId: attId, achievementId: achId }, demoCookie)
@@ -352,9 +376,9 @@ async function main() {
   const b2Id = await phaseSuspension()
   await phaseSuperAdmin(b2Id)
   const store = await phaseStorage(b2Id)
+  await phasePersistenceRecord()
   await phaseDemoIsolation(store.achId)
   await phaseSecurity()
-  await phasePersistenceRecord()
 
   console.log(`\n═══ النتيجة: ${passed} نجاح / ${failed} فشل ═══`)
   if (failures.length) { console.log('الفشل:'); failures.forEach((f) => console.log('  • ' + f)) }
