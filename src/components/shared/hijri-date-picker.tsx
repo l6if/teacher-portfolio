@@ -116,11 +116,15 @@ function HijriDatePickerDialog({
     onOpenChange(false)
   }
 
-  const selCls = 'h-11 w-full rounded-xl border border-input bg-card text-sm font-medium shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&>span]:text-right [&>span]:font-semibold'
+  const selCls = 'h-11 w-full min-w-0 rounded-xl border border-input bg-card text-sm font-medium shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&>span]:min-w-0 [&>span]:truncate [&>span]:text-right [&>span]:font-semibold'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="dialog-sheet top-auto max-w-[calc(100vw-2rem)] translate-y-0 p-0 sm:top-[20%] sm:max-w-md sm:translate-y-0">
+      {/* الجوال: Bottom Sheet مثبتة بجوانب الشاشة كاملة (left/right/bottom = 0، بلا أي translate)
+          — تجاوز صريح لقواعد الـ Dialog المتمركز الموروثة (left-[50%] + translate-x-[-50%])
+          لأن تعليمة translate:none في .dialog-sheet يُسقطها مُجمِّع CSS، فنحيد الإزاحة من الطبقة نفسها.
+          سطح المكتب (sm:): يعود مودالًا متمركزًا كما كان تمامًا. */}
+      <DialogContent dir="rtl" className="dialog-sheet left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 max-w-[calc(100vw-2rem)] p-0 sm:left-[50%] sm:right-auto sm:bottom-auto sm:top-[20%] sm:max-w-md sm:translate-x-[-50%] sm:translate-y-0">
         <div className="p-5 sm:p-6">
           <DialogHeader className="text-right">
             <DialogTitle className="text-lg font-bold">اختر التاريخ</DialogTitle>
@@ -134,7 +138,7 @@ function HijriDatePickerDialog({
           </DialogHeader>
 
           <div className="mt-5 grid grid-cols-3 gap-2.5 sm:gap-3">
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">اليوم</label>
               <Select dir="rtl" value={String(sel.day)} onValueChange={(v) => setSel((s) => ({ ...s, day: Number(v) }))}>
                 <SelectTrigger dir="rtl" className={selCls}><SelectValue /></SelectTrigger>
@@ -145,7 +149,7 @@ function HijriDatePickerDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">الشهر</label>
               <Select dir="rtl" value={String(sel.month)} onValueChange={handleMonth}>
                 <SelectTrigger dir="rtl" className={selCls}><SelectValue /></SelectTrigger>
@@ -156,7 +160,7 @@ function HijriDatePickerDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">السنة</label>
               <Select dir="rtl" value={String(sel.year)} onValueChange={handleYear}>
                 <SelectTrigger dir="rtl" className={selCls}><SelectValue /></SelectTrigger>
@@ -171,7 +175,7 @@ function HijriDatePickerDialog({
 
           {/* بطاقة المعاينة */}
           <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-secondary/60 px-4 py-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-medium text-muted-foreground">التاريخ المحدد</p>
               <p className="mt-0.5 text-base font-bold text-primary tabular-nums" aria-live="polite">{preview}</p>
             </div>

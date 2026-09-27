@@ -180,6 +180,14 @@
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
+    /* ملاحظة جذرية: مُجمِّع CSS (Lightning/Tailwind v4) يُسقط تعليمة
+       «translate: none !important» صامتة من الناتج النهائي — أُثبت ذلك بمقارنة
+       CSS المُقدَّم بالمصدر. لذا نُصفّر متغيري Tailwind المُغذِّين لأداة
+       translate-x/y المتوارثة من DialogContent المتمركز (left-[50%] +
+       translate-x-[-50%]) — المتغيرات المخصصة لا تُسقط أبدًا، فيبقى الشيت
+       ملزوقًا بجوانب الشاشة بلا أي إزاحة أفقية على الجوال. */
+    --tw-translate-x: 0 !important;
+    --tw-translate-y: 0 !important;
     translate: none !important;
     transform: none !important;
     width: 100vw !important;
