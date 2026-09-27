@@ -84,3 +84,4 @@ Caddyfile
 nohup.out
 agent-ctx/
 .secret-patterns
+supabase/
