@@ -6,7 +6,8 @@ import urllib.request
 
 BASE = 'http://localhost:3000'
 EMAIL = 'sultan@madrasati.sa'
-PASS = '***REMOVED-DEV-SECRET***'
+import os
+PASS = os.environ.get('DEMO_PASSWORD', '')
 
 def req(method, path, body=None, cookie=None):
     r = urllib.request.Request(BASE + path, method=method)

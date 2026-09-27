@@ -88,7 +88,7 @@ async function main() {
 
   try {
     // ── 1) دخول صحيح ──
-    const s = await login('sultan@madrasati.sa', '***REMOVED-DEV-SECRET***')
+    const s = await login('sultan@madrasati.sa', process.env.TEACHER_PASSWORD ?? '')
     ok('1) دخول صحيح → 200 + جلسة', s.res.status === 200 && !!s.cookie)
     const meBody = await s.res.clone?.().json().catch(() => null) ?? null
 
@@ -111,7 +111,7 @@ async function main() {
     ok('5) معلم يطلب ملف معلم آخر → 403', fileCross.status === 403)
 
     // ── 6) مدير خارج نطاق المدرسة ──
-    const n = await login('noura@madrasati.sa', '***REMOVED-DEV-SECRET***')
+    const n = await login('noura@madrasati.sa', process.env.TEACHER_PASSWORD ?? '')
     const outScope = await fetch(`${BASE}/api/dashboard?userId=${tempTeacher.id}`, { headers: { cookie: n.cookie } })
     ok('6) مدير يطلب معلمًا خارج مدرسته → 403', outScope.status === 403)
     const outScopeFile = await fetch(`${BASE}/api/files/${'tmpsec-att-outscope'}`, { headers: { cookie: n.cookie } })

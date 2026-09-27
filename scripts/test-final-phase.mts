@@ -68,8 +68,8 @@ async function testAuth() {
   r = await req('POST', '/api/auth/signup', { email, password, confirmPassword: 'different1A' })
   ok('signup: عدم تطابق → 400', r.status === 400 && /متطابقتين/.test(r.json?.error ?? ''))
 
-  // كلمة ضعيفة شائعة
-  r = await req('POST', '/api/auth/signup', { email, password: '***REMOVED-DEV-SECRET***', confirmPassword: '***REMOVED-DEV-SECRET***' })
+  // كلمة ضعيفة شائعة (من قائمة WEAK_PASSWORDS في الخادم)
+  r = await req('POST', '/api/auth/signup', { email, password: 'welcome123', confirmPassword: 'welcome123' })
   ok('signup: كلمة ضعيفة شائعة → 400', r.status === 400)
 
   // محاولة تصعيد دور عبر التسجيل — يجب تجاهلها تمامًا
@@ -210,7 +210,9 @@ async function testSuperAdminSecurity(adminCookie: string, targetId: string) {
   ok('super-admin API: غير مسجل → 401', r.status === 401)
 
   // معلم → 403
-  r = await req('POST', '/api/session', { email: 'sultan@madrasati.sa', password: '***REMOVED-DEV-SECRET***' })
+  // كلمات مرور الحسابات المزروعة — من البيئة (لا أسرار في الكود)
+  const teacherPw = process.env.TEACHER_PASSWORD ?? ''
+  r = await req('POST', '/api/session', { email: 'sultan@madrasati.sa', password: teacherPw })
   const teacherCookie = cookieOf(r)
   ok('login: المعلم سلطان يدخل', r.status === 200)
   r = await req('GET', '/api/super-admin/stats', undefined, teacherCookie)
@@ -221,7 +223,7 @@ async function testSuperAdminSecurity(adminCookie: string, targetId: string) {
   ok('super-admin PATCH: TEACHER يحاول ترقية نفسه → 403', r.status === 403)
 
   // مدير → 403
-  r = await req('POST', '/api/session', { email: 'noura@madrasati.sa', password: '***REMOVED-DEV-SECRET***' })
+  r = await req('POST', '/api/session', { email: 'noura@madrasati.sa', password: process.env.TEACHER_PASSWORD ?? '' })
   const managerCookie = cookieOf(r)
   ok('login: المديرة نورة تدخل', r.status === 200)
   r = await req('GET', '/api/super-admin/stats', undefined, managerCookie)
@@ -363,7 +365,7 @@ async function testDemoIsolation() {
   ok('demo: بيانات غنية (إنجازات كافية للمعاينة)', (await db.achievement.count({ where: { userId: demo.id } })) >= 8)
 
   // المعلم الحقيقي لا يرى بيانات الديمو عبر API (معلم آخر)
-  let r = await req('POST', '/api/session', { email: 'sultan@madrasati.sa', password: '***REMOVED-DEV-SECRET***' })
+  let r = await req('POST', '/api/session', { email: 'sultan@madrasati.sa', password: process.env.TEACHER_PASSWORD ?? '' })
   const sultanCookie = cookieOf(r)
   if (demo) {
     r = await req('GET', `/api/achievements?userId=${demo.id}`, undefined, sultanCookie)
@@ -373,7 +375,7 @@ async function testDemoIsolation() {
   }
 
   // المديرة الحقيقية (مدرسة مختلفة) لا ترى الديمو ضمن معلميها
-  r = await req('POST', '/api/session', { email: 'noura@madrasati.sa', password: '***REMOVED-DEV-SECRET***' })
+  r = await req('POST', '/api/session', { email: 'noura@madrasati.sa', password: process.env.TEACHER_PASSWORD ?? '' })
   const managerCookie = cookieOf(r)
   if (demo) {
     r = await req('GET', `/api/profile?userId=${demo.id}`, undefined, managerCookie)

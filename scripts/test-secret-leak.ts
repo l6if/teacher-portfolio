@@ -15,9 +15,9 @@
 
 const BASE = (process.env.TEST_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
 const TEACHER_EMAIL = process.env.TEST_TEACHER_EMAIL || 'sultan@madrasati.sa'
-const TEACHER_PASSWORD = process.env.TEST_TEACHER_PASSWORD || '***REMOVED-DEV-SECRET***'
+const TEACHER_PASSWORD = process.env.TEST_TEACHER_PASSWORD ?? ''
 const MANAGER_EMAIL = process.env.TEST_MANAGER_EMAIL || 'noura@madrasati.sa'
-const MANAGER_PASSWORD = process.env.TEST_MANAGER_PASSWORD || '***REMOVED-DEV-SECRET***'
+const MANAGER_PASSWORD = process.env.TEST_MANAGER_PASSWORD ?? ''
 
 // ─── الحقول الممنوعة (مفاتيح، بأي عمق، غير حساسة لحالة الحرف) ───
 const FORBIDDEN_KEYS = new Set([

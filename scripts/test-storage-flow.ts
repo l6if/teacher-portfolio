@@ -12,7 +12,7 @@ function ok(name: string, cond: boolean, extra = '') {
   else { failed++; console.log(`  ✗ ${name}${extra ? ' — ' + extra : ''}`) }
 }
 
-async function login(email: string, password = '***REMOVED-DEV-SECRET***') {
+async function login(email: string, password = process.env.TEACHER_PASSWORD ?? '') {
   const res = await fetch(`${BASE}/api/session`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

@@ -1,8 +1,9 @@
 #!/bin/bash
 # gen-reports.sh — يولّد كل أنواع التقارير PDF عبر المتصفح للفحص البصري
-# الاستخدام: bash scripts/gen-reports.sh [teacher_email] [password]
+# الاستخدام: TEACHER_PASSWORD='...' bash scripts/gen-reports.sh [teacher_email]
+# (كلمة المرور من البيئة أو الوسيطة الثانية — لا قيم ثابتة في الكود)
 EMAIL=${1:-sultan@madrasati.sa}
-PASS=${2:-***REMOVED-DEV-SECRET***}
+PASS=${2:-${TEACHER_PASSWORD:?اضبط TEACHER_PASSWORD في البيئة أو مررها كوسيطة ثانية}}
 cd /home/z/my-project
 
 gen () {

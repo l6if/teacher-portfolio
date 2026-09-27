@@ -38,7 +38,7 @@ async function main() {
   const page = await ctx.newPage()
   await page.goto(BASE)
   await page.getByLabel('البريد الإلكتروني').fill('sultan@madrasati.sa')
-  await page.locator('#login-password').fill('***REMOVED-DEV-SECRET***')
+  await page.locator('#login-password').fill(process.env.DEMO_PASSWORD ?? '')
   await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
   await page.waitForTimeout(3500)
 

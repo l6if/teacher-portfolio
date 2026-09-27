@@ -21,7 +21,7 @@ export function validateEmail(email: string): string | null {
 const WEAK_PASSWORDS = new Set([
   '12345678', '123456789', '1234567890', 'password', 'password1',
   'qwerty123', '11111111', '88888888', '00000000', 'abcd1234',
-  'letmein1', 'iloveyou1', '***REMOVED-DEV-SECRET***', 'school123', 'admin123',
+  'letmein1', 'iloveyou1', 'welcome123', 'school123', 'admin123',
 ])
 
 export function validatePassword(

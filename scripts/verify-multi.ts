@@ -7,7 +7,7 @@ const adminPw = process.env.ADMIN_PASSWORD ?? ''
 const teacherPw = process.env.TEACHER_PASSWORD ?? ''
 const tests: Array<[string, string]> = [
   ['admin@madrasati.sa', adminPw],
-  ['admin@madrasati.sa', '***REMOVED-DEV-SECRET***'],
+  ['admin@madrasati.sa', process.env.ADMIN_PASSWORD ?? ''],
   ['sultan@madrasati.sa', teacherPw],
   ['noura@madrasati.sa', teacherPw],
 ]

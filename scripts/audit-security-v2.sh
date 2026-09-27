@@ -1,6 +1,8 @@
 #!/bin/bash
 # الاختبارات الأمنية بعد الإصلاحات — Production Readiness Audit v2
+# كلمة المرور من البيئة — لا قيم ثابتة في الكود
 BASE="http://localhost:3000"
+: "${TEACHER_PASSWORD:?اضبط TEACHER_PASSWORD في البيئة}"
 JAR_A=/tmp/jar2-teacherA.txt
 JAR_B=/tmp/jar2-teacherB.txt
 JAR_M=/tmp/jar2-manager.txt
@@ -8,11 +10,11 @@ rm -f $JAR_A $JAR_B $JAR_M
 
 echo "════ A) المصادقة ════"
 echo -n "دليل المستخدمين بدون جلسة (يجب user:null): "; curl -s $BASE/api/session; echo
-echo -n "دخول ببيانات صحيحة: "; curl -s -c $JAR_A -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{"email":"sultan@madrasati.sa","password":"***REMOVED-DEV-SECRET***"}' -o /tmp/ra.json -w "[%{http_code}] "; grep -o '"role":"[A-Z]*"' /tmp/ra.json; echo
+echo -n "دخول ببيانات صحيحة: "; curl -s -c $JAR_A -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{"email":"sultan@madrasati.sa","password":"$TEACHER_PASSWORD"}' -o /tmp/ra.json -w "[%{http_code}] "; grep -o '"role":"[A-Z]*"' /tmp/ra.json; echo
 echo -n "دخول بكلمة مرور خاطئة (يجب 401): "; curl -s -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{"email":"sultan@madrasati.sa","password":"wrong"}' -w " [%{http_code}]\n" -o /dev/null
 echo -n "دخول JSON تالف (يجب 400/401 لا 500): "; curl -s -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{bad' -w " [%{http_code}]\n" -o /dev/null
-curl -s -c $JAR_B -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{"email":"ahmed@madrasati.sa","password":"***REMOVED-DEV-SECRET***"}' -o /dev/null
-curl -s -c $JAR_M -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{"email":"noura@madrasati.sa","password":"***REMOVED-DEV-SECRET***"}' -o /dev/null
+curl -s -c $JAR_B -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{"email":"ahmed@madrasati.sa","password":"$TEACHER_PASSWORD"}' -o /dev/null
+curl -s -c $JAR_M -X POST $BASE/api/session -H 'Content-Type: application/json' -d '{"email":"noura@madrasati.sa","password":"$TEACHER_PASSWORD"}' -o /dev/null
 TEACHER_B_ID=$(curl -s -b $JAR_B $BASE/api/me | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 MANAGER_ID=$(curl -s -b $JAR_M $BASE/api/me | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 echo "  B=$TEACHER_B_ID M=$MANAGER_ID"
