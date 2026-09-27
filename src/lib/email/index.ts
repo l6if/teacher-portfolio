@@ -4,6 +4,7 @@
  *
  * المزودات:
  *   • console  — الافتراضي في التطوير: يسجل الرسالة كاملة في سجل الخادم (رابط الاستعادة يظهر هناك).
+ *   • resend   — الإنتاج الموصى به: Resend HTTP API (env: EMAIL_PROVIDER=resend + RESEND_API_KEY + EMAIL_FROM).
  *   • smtp     — جاهز للربط لاحقًا عند توفير مزود بريد فعلي (env: EMAIL_PROVIDER=smtp + إعداداته).
  *
  * الصدق أولًا: استعادة كلمة المرور "تعمل من طرف البريد" فقط بعد ربط مزود فعلي
@@ -38,6 +39,38 @@ class ConsoleEmailProvider implements EmailProvider {
   }
 }
 
+// ─── مزود الإنتاج: Resend (HTTP API مباشر — بلا تبعيات) ──────────
+
+class ResendEmailProvider implements EmailProvider {
+  readonly name = 'resend'
+
+  constructor(
+    private readonly apiKey: string,
+    private readonly from: string,
+  ) {}
+
+  async send(message: EmailMessage): Promise<void> {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.from,
+        to: [message.to],
+        subject: message.subject,
+        text: message.text,
+        ...(message.html ? { html: message.html } : {}),
+      }),
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`Resend API ${res.status}: ${body.slice(0, 200)}`)
+    }
+  }
+}
+
 // ─── مزود SMTP جاهز للتفعيل (يتطلب nodemailer أو مكافئًا عند الربط) ──
 
 class SmtpEmailProvider implements EmailProvider {
@@ -69,7 +102,16 @@ let cached: EmailProvider | null = null
 export function getEmailProvider(): EmailProvider {
   if (cached) return cached
   const kind = (process.env.EMAIL_PROVIDER ?? 'console').toLowerCase()
-  if (kind === 'smtp') {
+  if (kind === 'resend') {
+    const apiKey = process.env.RESEND_API_KEY?.trim() ?? ''
+    const from = process.env.EMAIL_FROM?.trim() ?? ''
+    if (apiKey && from) {
+      cached = new ResendEmailProvider(apiKey, from)
+    } else {
+      console.warn('[email] EMAIL_PROVIDER=resend لكن RESEND_API_KEY/EMAIL_FROM ناقصة — العودة لمزود السجل')
+      cached = new ConsoleEmailProvider()
+    }
+  } else if (kind === 'smtp') {
     const host = process.env.EMAIL_SMTP_HOST ?? ''
     const port = Number(process.env.EMAIL_SMTP_PORT ?? 587)
     const user = process.env.EMAIL_SMTP_USER ?? ''
@@ -85,6 +127,15 @@ export function getEmailProvider(): EmailProvider {
     cached = new ConsoleEmailProvider()
   }
   return cached
+}
+
+/** جاهزية مزود الإرسال الفعلي (للعرض في واجهة الحالة) */
+export function emailDeliveryReady(): boolean {
+  const kind = (process.env.EMAIL_PROVIDER ?? 'console').toLowerCase()
+  if (kind === 'resend') {
+    return Boolean(process.env.RESEND_API_KEY?.trim() && process.env.EMAIL_FROM?.trim())
+  }
+  return false
 }
 
 // ─── قوالب الرسائل الجاهزة (to يُحدد عند الإرسال) ───────────────
