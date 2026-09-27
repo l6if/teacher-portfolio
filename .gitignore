@@ -83,3 +83,4 @@ Caddyfile
 *.pid
 nohup.out
 agent-ctx/
+.secret-patterns

@@ -12,7 +12,12 @@ import { validatePassword } from '../src/lib/validation'
 const db = new PrismaClient()
 
 const DEMO_EMAIL = (process.env.DEMO_EMAIL ?? 'demo@madrasati.sa').trim().toLowerCase()
-const NEW_PASSWORD = (process.env.DEMO_PASSWORD ?? '***REMOVED-DEV-SECRET***').trim()
+// لا افتراضي لكلمة المرور أبدًا — من البيئة فقط (منع أي كلمة مرور معروفة في الكود)
+const NEW_PASSWORD = (process.env.DEMO_PASSWORD ?? '').trim()
+if (!NEW_PASSWORD) {
+  console.error('اضبط DEMO_PASSWORD في البيئة أولًا (بلا افتراضيات).')
+  process.exit(1)
+}
 
 async function main() {
   const err = validatePassword(NEW_PASSWORD)

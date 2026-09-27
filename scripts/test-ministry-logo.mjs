@@ -5,7 +5,8 @@ import { chromium } from '/home/z/.npm-global/lib/node_modules/playwright/index.
 
 const BASE = 'http://localhost:3000'
 const EMAIL = 'demo@madrasati.sa'
-const PASS = '***REMOVED-DEV-SECRET***'
+const PASS = process.env.DEMO_PASSWORD ?? ''
+if (!PASS) { console.error('اضبط DEMO_PASSWORD في البيئة أولًا'); process.exit(1) }
 const SHOT = (n) => `/home/z/my-project/download/${n}`
 
 const browser = await chromium.launch({ executablePath: '/home/z/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome' })

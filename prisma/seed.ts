@@ -9,8 +9,11 @@ import { hashPassword } from '../src/lib/auth'
 
 const db = new PrismaClient()
 
-// كلمة مرور موحدة لجميع حسابات التطوير التجريبية
-const DEV_PASSWORD = process.env.SEED_PASSWORD || '***REMOVED-DEV-SECRET***'
+// كلمة مرور موحدة لجميع حسابات التطوير التجريبية — من البيئة فقط (بلا افتراضي ثابت في الكود)
+const DEV_PASSWORD = process.env.SEED_PASSWORD ?? ''
+if (!DEV_PASSWORD) {
+  throw new Error('اضبط SEED_PASSWORD في البيئة قبل تشغيل البذرة (سياسة: لا كلمات مرور ثابتة في الكود).')
+}
 
 const now = new Date()
 const daysAgo = (n) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000)
