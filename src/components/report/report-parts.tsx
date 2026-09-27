@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useApp } from '@/store/app-store'
 import { useReport } from '@/hooks/use-data'
-import { SECTIONS, TYPE_LABEL, STATUS_LABEL } from '@/lib/constants'
+import { SECTIONS, TYPE_LABEL, STATUS_LABEL, ATTACHMENT_KINDS } from '@/lib/constants'
 import { formatDate, formatNumber, improvement } from '@/lib/format'
 import { LoadingState, ErrorState } from '@/components/shared/states'
 import { RC, S, RT, RR, REPORT_BRAND, FIELD_LABELS, footerLine, schoolLine, educationAdminLine, educationOfficeLine } from '@/lib/report-tokens'
@@ -50,14 +50,39 @@ export function Metric({ value, label, accent = false }: { value: string; label:
   )
 }
 
-/** وثيقة مصغرة — شهادة/ملف/رابط كعنصر أنيق مضبوط */
-export function DocChip({ a }: { a: TAttachment }) {
+/** بطاقة شاهد غير صوري داخل التقرير — اسم الملف ونوعه، والرابط الخارجي قابل للنقر في PDF
+ *  (متصفحات Chromium تحفظ <a href> عند «حفظ بصيغة PDF»). لا تُصوَّر محتويات
+ *  الملف تلقائيًا — التوثيق بإسمه ونوعه كما في المستندات المدرسية الرسمية. */
+export function EvidenceCard({ a }: { a: TAttachment }) {
+  const isLink = a.kind === 'LINK'
+  const kindLabel = ATTACHMENT_KINDS[a.kind]?.label ?? 'مرفق'
+  const ellipsis = { overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', minWidth: 0 } as const
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '1.8mm', border: `0.7px solid ${RC.line}`, borderRadius: RR.chip, padding: '1.2mm 3.5mm', fontSize: '8.5px', color: RC.inkSoft, background: RC.wash, maxWidth: '88mm' }}>
-      <span style={{ width: '1.6mm', height: '1.6mm', borderRadius: '99px', background: RC.primary, flexShrink: 0 }} aria-hidden="true" />
-      <span style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{a.title}</span>
-      <span style={{ color: RC.muted, flexShrink: 0 }} dir="ltr">{a.kind === 'LINK' ? 'رابط' : 'مرفق'}</span>
-    </span>
+    <div className="print-avoid-break" style={{ display: 'flex', alignItems: 'center', gap: '2mm', border: `0.7px solid ${RC.line}`, borderRadius: RR.card, padding: '1.6mm 3.5mm', background: RC.wash, pageBreakInside: 'avoid' }}>
+      <span style={{ width: '1.6mm', height: '1.6mm', borderRadius: RR.chip, background: RC.primary, flexShrink: 0 }} aria-hidden="true" />
+      <span style={{ ...RT.body, fontSize: '9.5px', color: RC.ink, flexShrink: 0 }}>شاهد {isLink ? 'رابط' : 'مرفق'}:</span>
+      <span style={{ ...RT.bodyStrong, fontSize: '9.5px', color: RC.inkSoft, flexShrink: 1, ...ellipsis }}>{a.title}</span>
+      {a.fileName && !isLink && (
+        <span dir="ltr" style={{ ...RT.caption, color: RC.muted, flexShrink: 1, ...ellipsis }}>{a.fileName}</span>
+      )}
+      {isLink && a.url ? (
+        <a href={a.url} target="_blank" rel="noopener noreferrer" dir="ltr" style={{ ...RT.caption, color: RC.primaryDeep, textDecoration: 'none', flexShrink: 1, ...ellipsis }}>
+          {a.url.replace(/^https?:\/\//, '')}
+        </a>
+      ) : (
+        <span style={{ ...RT.caption, color: RC.muted, border: `0.6px solid ${RC.line}`, borderRadius: RR.chip, padding: '0.4mm 2.2mm', flexShrink: 0 }}>{kindLabel}</span>
+      )}
+    </div>
+  )
+}
+
+/** قائمة الشواهد غير الصورية — بطاقات بسيطة متطابقة في المعاينة والطباعة وPDF */
+export function FileEvidenceList({ files }: { files: TAttachment[] }) {
+  if (!files.length) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6mm' }}>
+      {files.map((f) => <EvidenceCard key={f.id} a={f} />)}
+    </div>
   )
 }
 
@@ -176,10 +201,14 @@ export function AchievementCase({ a, index, fields }: { a: TAchievement; index?:
       {rendered.slice(1)}
       {a.durationText && <LabeledField label={FIELD_LABELS.durationText} value={a.durationText} />}
       {scored && <BeforeAfter pre={a.preScore!} post={a.postScore!} />}
-      {images.length > 0 && <Gallery images={images} />}
-      {files.length > 0 && (
-        <div className="print-avoid-break" style={{ marginTop: S.s3, display: 'flex', flexWrap: 'wrap', gap: '2mm', pageBreakInside: 'avoid' }}>
-          {files.map((f) => <DocChip key={f.id} a={f} />)}
+      {/* قسم الشواهد والمرفقات — يظهر فقط عند وجود شواهد (لا عنوان فارغًا أبدًا):
+          الصور بمعرض النظام نفسه (1 بطولية / 2 عمودان / 3 أثلاث / 4+ شبكة)،
+          وغير الصور بطاقات باسم الملف ونوعه، والروابط الخارجية بنصها القابل للنقر */}
+      {(images.length > 0 || files.length > 0) && (
+        <div style={{ marginTop: S.s3 }}>
+          <p style={{ margin: `0 0 ${S.s2}`, ...RT.metricLabel, color: RC.primaryDeep, pageBreakAfter: 'avoid' }}>الشواهد والمرفقات</p>
+          {images.length > 0 && <Gallery images={images} />}
+          {files.length > 0 && <FileEvidenceList files={files} />}
         </div>
       )}
       <Rule margin={`${S.s4} 0 0`} color={RC.line} />

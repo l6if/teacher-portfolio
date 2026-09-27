@@ -462,6 +462,12 @@ export function ReportPrint() {
     let cancelled = false
     let prevTitle: string | null = null
 
+    // عزل مستند الطباعة: طوال هذا الأثر تحمل body صنف pf-printing،
+    // وضمن @media print يختفي كل أبناء body عدا #print-root — فلا تطبع
+    // واجهة التحرير ولا النوافذ المنبثقة، فقط مستند التقرير نفسه
+    // (المصدر الموحد: نفس ReportBody المستخدمة في المعاينة وPDF).
+    document.body.classList.add('pf-printing')
+
     const t = setTimeout(async () => {
       const root = document.getElementById('print-root')
       const imgs = Array.from(root?.querySelectorAll('img') ?? [])
@@ -484,6 +490,7 @@ export function ReportPrint() {
     window.addEventListener('afterprint', after)
     return () => {
       cancelled = true
+      document.body.classList.remove('pf-printing')
       if (prevTitle !== null) document.title = prevTitle
       clearTimeout(t)
       window.removeEventListener('afterprint', after)

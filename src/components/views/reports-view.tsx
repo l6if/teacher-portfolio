@@ -119,15 +119,20 @@ export function ReportsView() {
     return true
   }
 
-  /** الإجراء الأساسي لكل القوالب: المعاينة أولًا — ومنها التنزيل */
-  const preview = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
+  /** الإجراء الأساسي لكل القوالب: المعاينة أولًا — ومنها التنزيل.
+   *  تُعاد جلبة بيانات التقرير قبل الفتح مباشرة حتى لا تُعرض نسخة أقدم
+   *  من آخر تعديل/ربط شاهد (لا مسودة معلقة هنا — الحفظ التلقائي في النموذج
+   *  يُفرَغ في مساره قبل فتح معاينته). */
+  const preview = async (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
     if (!guard(mode, sections, achievementId)) return
+    await refetch().catch(() => {})
     setPreviewConfig(buildConfig(mode, sections, achievementId))
   }
 
   /** التنزيل/الطباعة المباشرة من البطاقة — نفس مكونات المعاينة حرفيًا */
-  const exportDirect = (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
+  const exportDirect = async (mode: ReportDef['key'], sections: string[] = [], achievementId?: string) => {
     if (!guard(mode, sections, achievementId)) return
+    await refetch().catch(() => {})
     setPrintConfig(buildConfig(mode, sections, achievementId))
   }
 

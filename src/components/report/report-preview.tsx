@@ -221,6 +221,29 @@ export function ReportPreview() {
 
   const open = Boolean(previewConfig)
 
+  /* عزل تمرير المعاينة عن قفل Radix (react-remove-scroll):
+     عند بقاء نموذج الإنجاز مفتوحًا تحت المعاينة، يعلّق react-remove-scroll
+     مستمع wheel/touchmove غير سلبي على مستوى المستند يلغي أي حدث يقع
+     خارج محتوى الورقة — فتَعطَل عجلة الفأرة واللمس داخل المعاينة رغم أن
+     منفذها scrollable. قطع انتشار الحدث عند نافذة الالتقاط (قبل وصوله
+     لمستمع المستند) يعيد التمرير الطبيعي داخل المعاينة حصرًا:
+     الخلفية تبقى مقفلة (body overflow hidden) والمعاينة تتمرر حرة.
+     stopPropagation لا يمس الفعل الافتراضي — التمرير الأصلي يستمر. */
+  useEffect(() => {
+    if (!open) return
+    const stop = (e: WheelEvent | TouchEvent) => {
+      const root = document.getElementById('report-preview-overlay')
+      const t = e.target as Node | null
+      if (root && t && root.contains(t)) e.stopPropagation()
+    }
+    window.addEventListener('wheel', stop, { passive: true, capture: true })
+    window.addEventListener('touchmove', stop, { passive: true, capture: true })
+    return () => {
+      window.removeEventListener('wheel', stop, { capture: true })
+      window.removeEventListener('touchmove', stop, { capture: true })
+    }
+  }, [open])
+
   /* قفل تمرير الصفحة خلف المعاينة */
   useEffect(() => {
     if (!open) return

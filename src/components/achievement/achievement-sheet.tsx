@@ -99,25 +99,38 @@ export function AchievementSheet() {
   const [goalId, setGoalId] = useState('')
   const [status, setStatus] = useState<AchievementStatus>('DRAFT')
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  /** إجراءات التقرير من النموذج — أثناء إفراد الحفظ المعلق قبل فتح المعاينة/الطباعة */
+  const [reportBusy, setReportBusy] = useState(false)
   const [viewMode, setViewMode] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // حارس السباق: طلب إنشاء مسودة واحد فقط مهما تتابعت الكتابة المتزامنة
   const draftPromise = useRef<Promise<string | null> | null>(null)
+  /** الحفظ المجدول المعلق ( Debounce 1.5s) — يُفرَغ فورًا قبل المعاينة/الطباعة */
+  const pendingSave = useRef<(() => Promise<void>) | null>(null)
+  /** آخر PATCH جارٍ — يُنتظر قبل فتح التقرير حتى لا يُقرأ نسخة قديمة */
+  const patchInFlight = useRef<Promise<void> | null>(null)
 
   const { data: goalsData } = useAchievements()
   const goals = goalsData?.goals ?? []
   const { data: sessionData } = useSession()
 
-  /** إجراءات التقرير الرسمي من النموذج — إبطال كاش التقرير أولًا (المسودة تُحفظ تلقائيًا
-   *  بلا إبطال) حتى تعكس المعاينة/الطباعة آخر ما كُتب، ثم فتح نفس مسار التقارير المعتمد */
-  const openReportAction = (kind: 'preview' | 'print') => {
-    if (!id || !type) return
+  /** إجراءات التقرير الرسمي من النموذج — إفراد آخر حفظ تلقائي معلق أولًا (بلا فقدان
+   *  المسودة — حالة النموذج لا تُمس)، ثم إبطال كاش التقرير وإعادة جلبه حتى تعكس
+   *  المعاينة/الطباعة/PDF آخر ما كُتب، ثم فتح نفس مسار التقارير المعتمد */
+  const openReportAction = async (kind: 'preview' | 'print') => {
+    if (!id || !type || reportBusy) return
     const config = { mode: 'official' as const, sections: [] as string[], title: officialTitle(type), achievementId: id }
-    qc.invalidateQueries({ queryKey: ['report'] })
-    if (kind === 'preview') setPreviewConfig(config)
-    else setPrintConfig(config)
+    setReportBusy(true)
+    try {
+      await flushSave()
+      qc.invalidateQueries({ queryKey: ['report'] })
+      if (kind === 'preview') setPreviewConfig(config)
+      else setPrintConfig(config)
+    } finally {
+      setReportBusy(false)
+    }
   }
 
   /** سياق المساعد الذكي المشترك — بيانات المستخدم والنموذج الحالي كاملًا.
@@ -207,7 +220,7 @@ export function AchievementSheet() {
     }
   }, [id, type, form.title, yearId])
 
-  /** حفظ تلقائي بعد 1.5 ثانية من التوقف */
+  /** حفظ تلقائي بعد 1.5 ثانية من التوقف — يخزّن المُنفِّذ المعلق ليُفرَغ فورًا عند الطلب */
   const persist = useCallback((nextForm: FormState, nextStatus?: AchievementStatus, nextGoalId?: string, nextAttachments?: TAttachment[]) => {
     if (viewMode) return
     const targetId = id
@@ -231,18 +244,42 @@ export function AchievementSheet() {
         setTimeout(() => setSaveState('idle'), 3000)
       }
     }
-    if (targetId) {
-      if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(() => doPatch(targetId), 1500)
-    } else {
-      // أول كتابة: انتظر توقف الكتابة ثم أنشئ المسودة واحفظ — يمنع طلبات متزامنة متكررة
-      if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(async () => {
-        const aid = await ensureDraft()
-        if (aid) doPatch(aid)
-      }, 1500)
+    const run = async () => {
+      let aid = targetId
+      if (!aid) aid = await ensureDraft()
+      if (aid) {
+        const p = doPatch(aid)
+        patchInFlight.current = p
+        await p
+      }
     }
+    if (timer.current) clearTimeout(timer.current)
+    pendingSave.current = run
+    timer.current = setTimeout(() => {
+      timer.current = null
+      const fn = pendingSave.current
+      pendingSave.current = null
+      void fn?.()
+    }, 1500)
   }, [id, status, goalId, attachments, viewMode, ensureDraft])
+
+  /** إفراد أي حفظ معلق فورًا — قبل فتح المعاينة/الطباعة/PDF حتى لا يُقرأ التقرير
+   *  نسخةً أقدم من آخر ما كُتب. ينفّذ المُنفِّذ المجدول (بآخر حالة نموذج التقطها)
+   *  وينتظر أي PATCH جارٍ — دون أي تغيير لحالة النموذج نفسها. */
+  const flushSave = useCallback(async (): Promise<void> => {
+    if (viewMode) return
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
+    const fn = pendingSave.current
+    pendingSave.current = null
+    if (fn) await fn()
+    if (patchInFlight.current) {
+      await patchInFlight.current.catch(() => {})
+      patchInFlight.current = null
+    }
+  }, [viewMode])
 
   const setField = (key: string, value: string) => {
     const next = { ...form, [key]: value }
@@ -679,21 +716,24 @@ export function AchievementSheet() {
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   <button
                     onClick={() => openReportAction('preview')}
-                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+                    disabled={reportBusy}
+                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60"
                   >
                     <Icon name="Eye" className="size-4 text-primary" />
                     معاينة
                   </button>
                   <button
                     onClick={() => openReportAction('print')}
-                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+                    disabled={reportBusy}
+                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60"
                   >
                     <Icon name="Download" className="size-4 text-primary" />
                     PDF
                   </button>
                   <button
                     onClick={() => openReportAction('print')}
-                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+                    disabled={reportBusy}
+                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60"
                   >
                     <Icon name="Printer" className="size-4 text-primary" />
                     طباعة

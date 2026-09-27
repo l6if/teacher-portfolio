@@ -306,7 +306,14 @@
   .rp-back-btn { padding: 0.5rem 0.875rem; }
 }
 
-.rp-scroll { scroll-snap-type: y proximity; }
+/* منفذ تمرير المعاينة: تمرير عمودي طبيعي بعجلة الفأرة واللمس والاسكرولبار —
+   overflow-x يبقى auto لأن التكبير > الملاءمة يحتاج تمريرًا أفقيًا للصفحة العريضة.
+   overscroll-behavior: contain يمنع تسلسل التمرير للخلفية عند الحدود. */
+.rp-scroll {
+  scroll-snap-type: y proximity;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 
 .rp-card {
   position: relative;
@@ -394,13 +401,23 @@
   }
   html, body {
     background: #ffffff !important;
+    margin: 0 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   #app-shell { display: none !important; }
   #print-root { display: block !important; }
   #print-root * { visibility: visible; }
-  /* إخفاء النوافذ المنبثقة والإشعارات عند الطباعة */
+
+  /* عزل مستند الطباعة — القاعدة الحاسمة:
+     عند تفعيل pf-printing (يضبطها ReportPrint قبل window.print مباشرة)
+     يختفي كل أبناء body عدا #print-root: التطبيق، بوابة نموذج الإنجاز
+     (Radix Portal — إصدار react-portal الحالي لا يضبط data-radix-portal
+     فلم تعد قاعدة [data-radix-portal] تطابقها)، المعاينة، الإشعارات،
+     وأي نافذة منبثقة. لا يُطبع إلا مستند التقرير نفسه. */
+  body.pf-printing > *:not(#print-root) { display: none !important; }
+
+  /* إخفاء النوافذ المنبثقة والإشعارات عند الطباعة (دفاع إضافي) */
   [data-radix-portal], [data-sonner-toaster], nextjs-portal { display: none !important; }
 
   /* منع الأسطر اليتيمة والأرامل في النصوص الطويلة */

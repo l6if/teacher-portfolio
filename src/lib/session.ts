@@ -102,6 +102,11 @@ const INTERNAL_KEYS = new Set(['passwordHash', 'storagePath', 'sessionEpoch'])
  * ينقي أي شجرة كائنات من الحقول الداخلية — عميقًا (مصفوفات + كائنات متداخلة).
  * يعالج الحمولات المركبة مثل الإنجازات بروابط شواهدها والمرفقات المتداخلة.
  * كائنات Date تمر كما هي (تُسلسل ISO عبر NextResponse.json كالمعتاد).
+ *
+ * الشواهد المخزنة (لها storagePath بلا url عام): قبل حذف المسار الداخلي
+ * يُشتق لها رابط التقديم الموحد /api/files/<id> — وكيل الخادم المصادَق
+ * (يفحص الجلسة والملكية عند كل جلب، ولا يكشف أي رابط عام دائم).
+ * بهذا يراها العميل في المعاينة/الطباعة/PDF ومكتبة الشواهد ومحرر الإنجاز.
  */
 export function sanitizeInternal<T>(value: T): T {
   if (Array.isArray(value)) return value.map(sanitizeInternal) as unknown as T
@@ -110,6 +115,9 @@ export function sanitizeInternal<T>(value: T): T {
     for (const [k, v] of Object.entries(value)) {
       if (INTERNAL_KEYS.has(k)) continue
       out[k] = sanitizeInternal(v)
+    }
+    if ('storagePath' in value && 'id' in value && !out.url) {
+      out.url = `/api/files/${String((value as Record<string, unknown>).id)}`
     }
     return out as T
   }

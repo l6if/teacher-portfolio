@@ -11,14 +11,14 @@
  * - كل خانة بلا بيانات تُستبعد ويعاد توزيع البقية تلقائيًا.
  * - يتوسع لصفحات إضافية دون قص (قواعد الفواصل المعتمدة في النظام).
  *
- * يُبنى حصرًا من مكوّنات النظام المشتركة: Gallery / BeforeAfter / DocChip /
+ * يُبنى حصرًا من مكوّنات النظام المشتركة: Gallery / BeforeAfter / FileEvidenceList /
  * LabeledField / Rule / PrintFooter + رموز التصميم RC/S/RT/RR.
  */
 
 import { TYPE_LABEL } from '@/lib/constants'
 import { formatDate, formatNumber } from '@/lib/format'
 import { RC, S, RT, RR, REPORT_BRAND } from '@/lib/report-tokens'
-import { Rule, Gallery, BeforeAfter, DocChip, OfficialDocHeader } from './report-parts'
+import { Rule, Gallery, BeforeAfter, FileEvidenceList, OfficialDocHeader } from './report-parts'
 import { useReportImages } from './report-image-context'
 import type { TAchievement, TAttachment } from '@/lib/types'
 import type { ReportData } from '@/hooks/use-data'
@@ -219,9 +219,7 @@ function AttachmentsSection({ files }: { files: TAttachment[] }) {
   return (
     <div>
       <SectionTitle>المرفقات والشواهد</SectionTitle>
-      <div className="print-avoid-break" style={{ display: 'flex', flexWrap: 'wrap', gap: '2mm', pageBreakInside: 'avoid' }}>
-        {files.map((f) => <DocChip key={f.id} a={f} />)}
-      </div>
+      <FileEvidenceList files={files} />
     </div>
   )
 }
