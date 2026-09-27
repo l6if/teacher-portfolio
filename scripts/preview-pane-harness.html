@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Preview Pane Harness — narrow pane inside wide viewport</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #dfe5e4; font-family: sans-serif; }
+  /* محاكاة واجهة محادثة واسعة مع pane معاينة ضيق على الجانب */
+  .chat-ui { display: flex; height: 100vh; }
+  .chat-side { flex: 1; padding: 24px; color: #4b5f57; direction: rtl; }
+  .pane-wrap { width: 420px; flex-shrink: 0; border-inline-start: 1px solid #b8c4c0; background: #fff; }
+  .pane-frame { width: 100%; height: 100%; border: 0; display: block; }
+  .badge { position: fixed; bottom: 8px; right: 12px; background:#14231F; color:#fff; padding:4px 10px; border-radius:99px; font-size:11px; z-index: 99; }
+</style>
+</head>
+<body>
+  <div class="chat-ui">
+    <div class="chat-side">
+      <h2>نافذة المتصفح الواسعة (1280px)</h2>
+      <p>هذه مساحة المحادثة الواسعة — التطبيق داخل pane معاينة ضيق بعرض 420px على اليسار.</p>
+    </div>
+    <div class="pane-wrap">
+      <iframe id="appPane" class="pane-frame" src="http://localhost:3000/"></iframe>
+    </div>
+  </div>
+  <div class="badge">preview pane = 420px inside 1280px window</div>
+</body>
+</html>
