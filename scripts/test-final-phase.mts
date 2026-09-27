@@ -164,8 +164,9 @@ async function testSuspension() {
   let r = await req('POST', '/api/auth/signup', { email, password: 'Susped@1448', confirmPassword: 'Susped@1448' })
   const cookie = cookieOf(r)
 
-  // دخول المدير العام
-  r = await req('POST', '/api/session', { email: 'admin@madrasati.sa', password: '***REMOVED-DEV-SECRET***!' })
+  // دخول المدير العام — كلمة المرور من البيئة (لا أسرار في الكود)
+  const adminPw = process.env.ADMIN_PASSWORD ?? ''
+  r = await req('POST', '/api/session', { email: 'admin@madrasati.sa', password: adminPw })
   ok('super-admin login: نجاح', r.status === 200)
   const adminCookie = cookieOf(r)
 
