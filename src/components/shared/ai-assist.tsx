@@ -172,7 +172,8 @@ function AiSuggestionDialog({
               <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-full bg-destructive/10">
                 <Icon name="CircleAlert" className="size-5 text-destructive" />
               </div>
-              <p className="text-sm font-medium text-foreground">تعذر إنشاء الاقتراح الآن. حاول مرة أخرى.</p>
+              {/* رسالة الخادم المحددة (حد الاستخدام/مهلة/خطأ) — عربية جاهزة، وإلا الرسالة العامة */}
+              <p className="text-sm font-medium text-foreground">{error}</p>
               <p className="mt-1 text-xs text-muted-foreground">نصك المحفوظ في الحقل لم يُمس.</p>
               <div className="mt-5 flex items-center justify-center gap-2">
                 <Button onClick={onRegenerate} variant="outline" className="rounded-full">
