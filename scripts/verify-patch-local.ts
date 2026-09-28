@@ -1,6 +1,7 @@
 // ═══ تحقق محلي سريع لإصلاحات الرقعة: اشتقاق /api/files + قسم الشواهد ═══
 // يسجل دخول مستخدم QA محلي، يرفع صورة، ينشئ إنجازًا ويربط الشاهد،
 // ثم يفحص /api/report: url المشتق + GET /api/files يعمل بالجلسة.
+export {}
 const BASE = process.env.BASE_URL || 'http://localhost:3000'
 const EMAIL = 'qa-patch-local@school.sa'
 const PASSWORD = 'QaPatch!2026'

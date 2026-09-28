@@ -1,4 +1,7 @@
 // تنظيف Production: حذف حساب QA المؤقت بتتالي (شواهد + ملفات التخزين + الإنجازات)
+export {}
+/** bun runtime global — غير معرّف في tsc بدون @types/bun (سكربت تشغيل فقط) */
+declare const Bun: { file(path: string): { text(): Promise<string> } }
 const BASE = 'https://teacher-portfolio-sultans-projects-bce2ab1d.vercel.app'
 const secrets = (await Bun.file('.env.production-secrets').text()).split('\n')
 const get = (k: string) => secrets.find((l) => l.startsWith(`${k}=`))?.slice(k.length + 1).trim() ?? ''
