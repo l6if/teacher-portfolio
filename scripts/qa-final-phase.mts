@@ -6,9 +6,11 @@
  */
 import { chromium } from 'playwright'
 import { execSync } from 'child_process'
+import { tmpdir } from 'os'
+import path from 'path'
 import fs from 'fs/promises'
 
-const BASE = 'http://localhost:3000'
+const BASE = process.env.TEST_BASE || process.env.BASE_URL || 'http://localhost:3000'
 const OUT = '/home/z/my-project/screenshots/pdf-qa'
 const SHOTS = '/home/z/my-project/screenshots'
 
@@ -112,7 +114,7 @@ async function main() {
   const officialCard = page.locator('.group', { hasText: 'التقرير الرسمي للإنجاز' }).first()
   await officialCard.locator('[role=combobox]').click()
   await page.waitForTimeout(800)
-  await page.getByRole('option', { name: /مبادرة اختبار الصور الكبيرة/ }).click()
+  await page.getByRole('option', { name: /مبادرة اختبار الصور الكبيرة/ }).first().click()
   await page.waitForTimeout(600)
   const titleHint = await page.getByText('سيُصدر بعنوان').textContent().catch(() => '')
   check('العنوان الديناميكي', titleHint.includes('تقرير مبادرة'), titleHint.slice(0, 50))
@@ -124,16 +126,17 @@ async function main() {
   await page.screenshot({ path: `${OUT}/official-4img-preview.png` })
 
   console.log('═══ 4) تنزيل PDF A4 + تحسين الصور ═══')
-  await page.getByRole('button', { name: 'تنزيل PDF' }).click()
+  await page.locator('.rp-toolbar').getByRole('button', { name: 'تنزيل PDF' }).click()
   const size4 = await capturePdf(page, `${OUT}/official-4img.pdf`)
   const mb4 = size4 / 1024 / 1024
   check('PDF رسمي 4 صور — حجم محسّن (<4.5MB مقابل 27MB أصلًا)', mb4 < 4.5, `${mb4.toFixed(2)} MB`)
 
-  const optimizedDir = '/home/z/my-project/storage/optimized'
+  // النسخ المحسنة في طبقة tmpdir (تنفيذ origin/main القائم: teacherfolio-optimized/<userId>)
+  const optimizedRoot = path.join(tmpdir(), 'teacherfolio-optimized')
   let optCount = 0
   try {
-    for (const d of await fs.readdir(optimizedDir)) {
-      optCount += (await fs.readdir(`${optimizedDir}/${d}`).catch(() => [])).length
+    for (const d of await fs.readdir(optimizedRoot)) {
+      optCount += (await fs.readdir(path.join(optimizedRoot, d)).catch(() => [])).length
     }
   } catch { /* لا مجلد بعد */ }
   check('نسخ محسنة على القرص (print w=1600 + preview w=1000)', optCount >= 8, `${optCount} ملفًا`)
@@ -150,14 +153,14 @@ async function main() {
   console.log('═══ 6) تقرير رسمي بلا صور = صفحة واحدة ═══')
   await officialCard.locator('[role=combobox]').click()
   await page.waitForTimeout(700)
-  await page.getByRole('option', { name: /لقاء مهني قصير/ }).click()
+  await page.getByRole('option', { name: /لقاء مهني قصير/ }).first().click()
   await page.waitForTimeout(500)
   await officialCard.getByRole('button', { name: 'معاينة التقرير' }).click()
   await page.waitForTimeout(3500)
   const pageCount1 = await page.locator('[data-rp-page]').count()
   check('رسمي بلا صور = صفحة A4 واحدة', pageCount1 === 1, `${pageCount1} صفحة`)
   await page.screenshot({ path: `${OUT}/official-noimg-preview.png` })
-  await page.getByRole('button', { name: 'تنزيل PDF' }).click()
+  await page.locator('.rp-toolbar').getByRole('button', { name: 'تنزيل PDF' }).click()
   await capturePdf(page, `${OUT}/official-noimg.pdf`)
   const noImgPages = execSync(`pdfinfo ${OUT}/official-noimg.pdf | grep Pages`).toString().trim()
   const noImgSize = (await fs.stat(`${OUT}/official-noimg.pdf`)).size

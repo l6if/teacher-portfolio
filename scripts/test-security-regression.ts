@@ -14,7 +14,7 @@
 // 10) استجابات المستخدم             → لا passwordHash إطلاقًا
 //
 // ينشئ صفوفًا مؤقتة (معلم بمدرسة أخرى + مرفقان) ثم يمسحها — ويتأكد
-// في النهاية أن الأعداد القياسية عادت كما كانت (7/7/6/48/16/18/2/5 — شاملة مسؤول المنصة والديمو).
+// في النهاية أن الأعداد القياسية عادت كما كانت (8/8/6/50/16/19/2/5 — شاملة مسؤول المنصة والديمو والمستخدم الحقيقي).
 
 import { loadPgClient } from './load-generated-client'
 
@@ -177,12 +177,15 @@ async function main() {
       reflection: await db.reflection.count(),
       devPlan: await db.devPlan.count(),
     }
+    // خط الأساس المحدّث (2026-09-29): +1 مستخدم حقيقي سجل عبر رابط المعاينة العامة
+    // (sha3ry66@gmail.com — سنة + إنجازان + رابط شاهد) و+1 رابط تاريخي من استعادة seed قديمة —
+    // لا تُحذف بيانات حقيقية أبدًا؛ خط الأساس القديم (7/7/6/48/16/18/2/5) موثق في التاريخ.
     const expected: Record<string, number> = {
-      user: 7, academicYear: 7, goal: 6, achievement: 48,
-      attachment: 16, evidenceLink: 18, reflection: 2, devPlan: 5,
+      user: 8, academicYear: 8, goal: 6, achievement: 50,
+      attachment: 16, evidenceLink: 19, reflection: 2, devPlan: 5,
     }
     const restored = Object.keys(expected).every((k) => (counts as any)[k] === expected[k])
-    ok('تنظيف: الأعداد القياسية عادت (7/7/6/48/16/18/2/5 = 5 تطوير + مسؤول + ديمو)', restored,
+    ok('تنظيف: الأعداد القياسية عادت (8/8/6/50/16/19/2/5 = 5 تطوير + مسؤول + ديمو + مستخدم حقيقي)', restored,
       Object.entries(counts).map(([k, v]) => `${k}:${v}`).join(' '))
     await db.$disconnect()
   }

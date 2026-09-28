@@ -85,3 +85,4 @@ nohup.out
 agent-ctx/
 .secret-patterns
 supabase/
+qa-state.json
