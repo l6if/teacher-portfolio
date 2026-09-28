@@ -11,6 +11,7 @@ import { DashboardView } from '@/components/views/dashboard-view'
 import { PortfolioView } from '@/components/views/portfolio-view'
 import { SectionView } from '@/components/views/section-view'
 import { EvidenceView } from '@/components/views/evidence-view'
+import { FrameworkView } from '@/components/framework/framework-view'
 import { ReportsView } from '@/components/views/reports-view'
 import { JourneyView } from '@/components/views/journey-view'
 import { ManagerView } from '@/components/views/manager-view'
@@ -47,6 +48,7 @@ function ViewRouter() {
     case 'portfolio': return <PortfolioView />
     case 'section': return <SectionView />
     case 'evidence': return <EvidenceView />
+    case 'framework': return <FrameworkView />
     case 'reports': return <ReportsView />
     case 'journey': return <JourneyView />
     case 'manager': return <ManagerView />
@@ -74,16 +76,24 @@ function AppInner() {
   const viewUserId = useApp((s) => s.viewUserId)
   const navigate = useApp((s) => s.navigate)
 
-  // توجيه المدير إلى ملفات المعلمين افتراضيًا
-  useEffect(() => {
-    if (session?.user?.role === 'MANAGER' && !viewUserId && view !== 'manager') {
-      navigate('manager')
-    }
-  }, [session, viewUserId, view, navigate])
-
   // بعد التسجيل الجديد: توجيه مباشر إلى «إكمال الملف المهني» (الاسم/الجنس لم يُكتملا بعد)
   const needsProfileCompletion =
     Boolean(session?.user) && (session!.user!.name === 'مستخدم جديد' || !session!.user!.gender)
+
+  // توجيه المدير إلى ملفات المعلمين افتراضيًا — لكن بعد اكتمال بوابة الملف
+  // (الأولوية للبوابة: توجيهان متزامنان متضاربان كانا يسببان حلقة لا نهائية
+  //  لمدير لم يحدد جنسه — Maximum update depth)
+  useEffect(() => {
+    if (
+      !needsProfileCompletion &&
+      session?.user?.role === 'MANAGER' &&
+      !viewUserId &&
+      view !== 'manager'
+    ) {
+      navigate('manager')
+    }
+  }, [session, viewUserId, view, needsProfileCompletion, navigate])
+
   useEffect(() => {
     if (needsProfileCompletion && view !== 'profile') navigate('profile')
   }, [needsProfileCompletion, view, navigate])

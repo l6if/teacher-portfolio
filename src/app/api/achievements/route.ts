@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveTargetUser, resolveYear, safeJson, sanitizeInternal } from '@/lib/session'
 import { TYPE_SECTION } from '@/lib/constants'
+import { resolveClassification } from '@/lib/framework-classification'
 
 // قائمة الإنجازات مع الفلاتر
 export async function GET(req: NextRequest) {
@@ -18,6 +19,8 @@ export async function GET(req: NextRequest) {
   const q = p.get('q')?.trim()
   const section = p.get('section')
   const goalId = p.get('goalId')
+  // فلتر الإطار المهني: إنجازات بانتظار التصنيف (شارة «يحتاج تصنيفًا»)
+  const unclassified = p.get('unclassified')
 
   const types = section
     ? Object.entries(TYPE_SECTION).filter(([, s]) => s === section).map(([t]) => t)
@@ -30,6 +33,7 @@ export async function GET(req: NextRequest) {
       ...(types ? { type: { in: types } } : {}),
       ...(status ? { status } : {}),
       ...(goalId ? { goalId } : {}),
+      ...(unclassified ? { subCriterionId: null } : {}),
       ...(q
         ? {
             OR: [
@@ -46,6 +50,9 @@ export async function GET(req: NextRequest) {
     include: {
       links: { include: { attachment: true } },
       goal: { select: { id: true, title: true } },
+      domain: { select: { id: true, name: true, isOfficial: true } },
+      criterion: { select: { id: true, name: true, isOfficial: true } },
+      subCriterion: { select: { id: true, name: true, isOfficial: true, officialCode: true } },
     },
   })
 
@@ -73,6 +80,13 @@ export async function POST(req: NextRequest) {
   const { attachmentIds, ...rest } = body
   const num = (v: unknown) => (v === '' || v === null || v === undefined ? null : Number(v))
 
+  // التصنيف داخل الإطار المهني (مجال ← معيار ← معيار فرعي) — يُشتق من
+  // المعيار الفرعي المختار حصرًا فلا يقبل ثلاثة متناقضة، ويتحقق من نطاق المدرسة
+  const classification = await resolveClassification(rest, me.school ?? null)
+  if (classification === null) {
+    return NextResponse.json({ error: 'المعيار المختار غير موجود أو خارج نطاق مدرستك' }, { status: 400 })
+  }
+
   const achievement = await db.achievement.create({
     data: {
       type: rest.type ?? 'OTHER',
@@ -98,6 +112,9 @@ export async function POST(req: NextRequest) {
       keywords: rest.keywords || null,
       status: rest.status ?? 'DRAFT',
       goalId: rest.goalId || null,
+      domainId: classification.domainId,
+      criterionId: classification.criterionId,
+      subCriterionId: classification.subCriterionId,
       userId: me.id,
       yearId: year.id,
     },

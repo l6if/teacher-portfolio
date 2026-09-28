@@ -1,11 +1,11 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../.sqlite-client"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ─── المستخدمون ───────────────────────────────────────────────
@@ -146,7 +146,7 @@ model Goal {
 // ─── الإطار المهني: المجالات ← المعايير ← المعايير الفرعية ─────
 // المرجع الرسمي: المعايير والمسارات المهنية للمعلمين في المملكة
 // العربية السعودية — هيئة تقويم التعليم والتدريب (1439هـ، ISBN
-// 978-603-90852-1-8): 3 مجالات، 10 معايير، 39 معيارًا فرعيًا.
+// 978-603-90852-1-8): 3 مجالات، 10 معايير، 32 معيارًا فرعيًا.
 // العناصر الرسمية (isOfficial=true) عالمية ومحمية النص؛ والمخصصة
 // على مستوى المدرسة (scope=SCHOOL + schoolId).
 model Domain {
@@ -177,9 +177,6 @@ model Criterion {
   isOfficial   Boolean   @default(false)
   officialCode String?   @unique // C1..C10 للرسمي — null للمخصص
   sortOrder    Int       @default(0)
-  // نطاق المدرسة للمعيار المخصص (حتى داخل مجال رسمي — القسم 32):
-  // رسمي = null؛ مخصص = مدرسة المنشئ ولا يظهر لمدارس أخرى
-  schoolId     String?
   archivedAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -190,7 +187,6 @@ model Criterion {
 
   @@index([domainId, sortOrder])
   @@index([isOfficial])
-  @@index([schoolId])
 }
 
 model SubCriterion {
@@ -199,10 +195,8 @@ model SubCriterion {
   name         String
   description  String?
   isOfficial   Boolean   @default(false)
-  officialCode String?   @unique // S1.1..S10.5 — الترقيم الرسمي (معيار.فرعي)
+  officialCode String?   @unique // S1.1..S10.3 — الترقيم الرسمي (معيار.فرعي)
   sortOrder    Int       @default(0)
-  // نطاق المدرسة للفرعي المخصص (حتى داخل معيار رسمي — القسم 25+32)
-  schoolId     String?
   archivedAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -212,7 +206,6 @@ model SubCriterion {
 
   @@index([criterionId, sortOrder])
   @@index([isOfficial])
-  @@index([schoolId])
 }
 
 // ─── الإنجاز / الشاهد المهني (الوحدة الأساسية) ────────────────

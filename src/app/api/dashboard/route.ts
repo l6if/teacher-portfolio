@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveTargetUser, resolveYear, toSafeUser, sanitizeInternal } from '@/lib/session'
 import { computeCompletion, pickRecommendation } from '@/lib/progress'
+import { calculateProfessionalCompletion } from '@/lib/framework-completion'
 
 // بيانات الصفحة الرئيسية
 export async function GET(req: NextRequest) {
@@ -20,6 +21,19 @@ export async function GET(req: NextRequest) {
 
   const completion = await computeCompletion(target.id, year.id)
   const recommendation = pickRecommendation(completion.sections)
+
+  // الاكتمال المهني الرسمي (القسم 46): بطاقة X من الإجمالي + المجالات الثلاثة
+  // بنسبها — يُحسب على مستوى الملف كاملًا (كل السنوات) لا سنة العرض فقط.
+  const professional = await calculateProfessionalCompletion(target.id, target.school ?? null)
+  const officialDomains = professional.domains
+    .filter((d) => d.isOfficial && !d.archived)
+    .map((d) => ({
+      id: d.id,
+      name: d.name,
+      completedSubs: d.completedSubs,
+      totalSubs: d.totalSubs,
+      percent: d.percent,
+    }))
 
   const recent = await db.achievement.findMany({
     where: { userId: target.id, yearId: year.id },
@@ -45,6 +59,12 @@ export async function GET(req: NextRequest) {
       recent,
       drafts,
       readonly: target.id !== me.id,
+      professional: {
+        official: professional.official,
+        custom: professional.custom,
+        domains: officialDomains,
+        unmappedCount: professional.unmappedCount,
+      },
     }),
   )
 }

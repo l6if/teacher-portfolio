@@ -11,6 +11,10 @@ export interface ReportAIContextInput {
   stage?: string // المرحلة
   subject?: string // المادة/التخصص
   grade?: string // الصف
+  // التصنيف على الإطار المهني (القسم 52) — أسماء فقط، ولا يغيّر التصنيف تلقائيًا
+  frameworkDomain?: string
+  frameworkCriterion?: string
+  frameworkSubCriterion?: string
   // سياق المشكلة والهدف
   problem?: string
   goal?: string
@@ -55,6 +59,7 @@ export function buildReportAIContext(input: ReportAIContextInput): Record<string
     'text', 'title', 'problem', 'execution', 'results', 'impact',
     'description', 'stages', 'goal', 'generalGoal',
     'beneficiaries', 'duration', 'achievementType', 'field', 'stage', 'subject', 'grade',
+    'frameworkDomain', 'frameworkCriterion', 'frameworkSubCriterion',
   ]
   let total = 0
   for (const f of fields) {
@@ -84,6 +89,9 @@ export function contextToPromptBlock(context: Record<string, string>): string {
     stage: 'المرحلة',
     subject: 'المادة/التخصص',
     grade: 'الصف',
+    frameworkDomain: 'المجال المهني الرسمي',
+    frameworkCriterion: 'المعيار المهني',
+    frameworkSubCriterion: 'المعيار الفرعي',
     problem: 'المشكلة/الحاجة',
     goal: 'الهدف المهني المرتبط',
     generalGoal: 'الهدف العام',

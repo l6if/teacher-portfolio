@@ -13,7 +13,7 @@ import {
 import { toast } from 'sonner'
 
 interface NavItem {
-  view: 'dashboard' | 'portfolio' | 'evidence' | 'reports' | 'journey' | 'manager'
+  view: 'dashboard' | 'portfolio' | 'evidence' | 'framework' | 'reports' | 'journey' | 'manager'
   label: string
   icon: string
 }
@@ -21,6 +21,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { view: 'dashboard', label: 'الرئيسية', icon: 'LayoutDashboard' },
   { view: 'portfolio', label: 'ملف إنجازي', icon: 'FolderOpen' },
+  { view: 'framework', label: 'الإطار المهني', icon: 'ScrollText' },
   { view: 'evidence', label: 'الشواهد', icon: 'LibraryBig' },
   { view: 'reports', label: 'التقارير', icon: 'FileText' },
   { view: 'journey', label: 'رحلتي المهنية', icon: 'Route' },

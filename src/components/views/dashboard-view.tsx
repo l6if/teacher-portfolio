@@ -9,6 +9,7 @@ import { LoadingState, ErrorState } from '@/components/shared/states'
 import { SECTIONS, SECTION_MAP, SECTION_ACTION, TYPE_MAP, QUICK_ADD } from '@/lib/constants'
 import { relTime, formatDateShort, formatNumber } from '@/lib/format'
 import { getGenderedLabels } from '@/lib/gender'
+import { COMPLETION_DISCLAIMER } from '@/lib/official-framework-constants'
 
 function greeting() {
   const h = new Date().getHours()
@@ -181,6 +182,67 @@ export function DashboardView() {
           )}
         </div>
       </div>
+
+      {/* ٢.٥ — الاكتمال المهني الرسمي (القسم 46): X من الإجمالي + المجالات الثلاثة */}
+      {data.professional && data.professional.official.total > 0 && (
+        <div className="anim-fade-up anim-delay-1 rounded-3xl border border-border bg-card p-4 shadow-soft sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Icon name="ScrollText" className="size-4.5 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">الاكتمال المهني الرسمي</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200/70">
+                <Icon name="BadgeCheck" className="size-3" strokeWidth={2.2} />
+                رسمي
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('framework')}
+              className="flex min-h-9 items-center gap-1.5 rounded px-1 text-xs font-medium text-primary transition-colors hover:text-primary/70 focus-visible:outline-2 focus-visible:rounded focus-visible:outline-ring"
+            >
+              الإطار المهني
+              <Icon name="ArrowLeft" className="size-3.5" />
+            </button>
+          </div>
+
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-2xl bg-secondary/50 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-lg font-bold tabular-nums text-foreground sm:text-xl">
+                {formatNumber(data.professional.official.completed)}
+                <span className="text-sm font-medium text-muted-foreground"> / {formatNumber(data.professional.official.total)}</span>
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">معيارًا فرعيًا مستوفيًا — {COMPLETION_DISCLAIMER}</p>
+            </div>
+            <div className="shrink-0">
+              <ProgressRing value={data.professional.official.percent} size={72} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {data.professional.domains.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => navigate('framework')}
+                className="rounded-2xl border border-border bg-card p-3.5 text-right transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                <p className="truncate text-[13px] font-bold text-foreground">{d.name}</p>
+                <div className="mt-2">
+                  <ProgressBar value={d.percent} thickness="h-1.5" />
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  {formatNumber(d.completedSubs)} من {formatNumber(d.totalSubs)} معايير فرعية · {formatNumber(d.percent)}%
+                </p>
+              </button>
+            ))}
+          </div>
+
+          {data.professional.unmappedCount > 0 && (
+            <p className="mt-3 rounded-xl bg-amber-50/70 px-3.5 py-2.5 text-[11px] leading-5 text-amber-800">
+              <Icon name="ClipboardList" className="ml-1 inline size-3.5 -translate-y-px" />
+              <span className="font-bold">{formatNumber(data.professional.unmappedCount)}</span> من إنجازاتك يحتاج تصنيفًا على المعايير — حدّد معيارها ليُحسب في الاكتمال.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ٤ — النشاط الأخير + المسودات */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">

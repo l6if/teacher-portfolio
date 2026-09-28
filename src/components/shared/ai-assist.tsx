@@ -28,6 +28,10 @@ export interface AiAssistContext {
   impact?: string
   beneficiaries?: string
   duration?: string
+  // التصنيف على الإطار المهني (القسم 52) — يُمرَّر للمزوّد لاقتراحات أدق
+  frameworkDomain?: string
+  frameworkCriterion?: string
+  frameworkSubCriterion?: string
 }
 
 type AiResult =

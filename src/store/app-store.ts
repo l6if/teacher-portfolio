@@ -4,7 +4,7 @@ import { create } from 'zustand'
 import type { SectionKey, AchievementType } from '@/lib/constants'
 
 export type View =
-  | 'dashboard' | 'portfolio' | 'section' | 'evidence'
+  | 'dashboard' | 'portfolio' | 'section' | 'evidence' | 'framework'
   | 'reports' | 'journey' | 'manager' | 'profile'
 
 export interface PrintConfig {
@@ -26,6 +26,9 @@ interface AppState {
   formOpen: boolean
   formType: AchievementType | null
   formAchievementId: string | null
+  /** التصنيف المهني المُسبق (من «إضافة إنجاز لهذا المعيار») */
+  formSubCriterionId: string | null
+  formSubLabels: { domainName?: string; criterionName?: string; subName?: string } | null
 
   searchOpen: boolean
   printConfig: PrintConfig | null
@@ -33,7 +36,7 @@ interface AppState {
   previewConfig: PrintConfig | null
 
   navigate: (view: View, opts?: { sectionKey?: SectionKey }) => void
-  openForm: (opts?: { type?: AchievementType | null; achievementId?: string | null }) => void
+  openForm: (opts?: { type?: AchievementType | null; achievementId?: string | null; subCriterionId?: string | null; domainName?: string; criterionName?: string; subName?: string }) => void
   closeForm: () => void
   setYear: (yearId: string | null) => void
   setViewUser: (userId: string | null, name?: string | null) => void
@@ -52,6 +55,8 @@ export const useApp = create<AppState>((set) => ({
   formOpen: false,
   formType: null,
   formAchievementId: null,
+  formSubCriterionId: null,
+  formSubLabels: null,
 
   searchOpen: false,
   printConfig: null,
@@ -64,8 +69,17 @@ export const useApp = create<AppState>((set) => ({
       searchOpen: false,
     })),
   openForm: (opts) =>
-    set({ formOpen: true, formType: opts?.type ?? null, formAchievementId: opts?.achievementId ?? null }),
-  closeForm: () => set({ formOpen: false, formType: null, formAchievementId: null }),
+    set({
+      formOpen: true,
+      formType: opts?.type ?? null,
+      formAchievementId: opts?.achievementId ?? null,
+      formSubCriterionId: opts?.subCriterionId ?? null,
+      formSubLabels: opts?.subCriterionId
+        ? { domainName: opts.domainName, criterionName: opts.criterionName, subName: opts.subName }
+        : null,
+    }),
+  closeForm: () =>
+    set({ formOpen: false, formType: null, formAchievementId: null, formSubCriterionId: null, formSubLabels: null }),
   setYear: (yearId) => set({ yearId }),
   setViewUser: (viewUserId, viewUserName) => set({ viewUserId, viewUserName }),
   setSearchOpen: (searchOpen) => set({ searchOpen }),

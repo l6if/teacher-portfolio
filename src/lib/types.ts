@@ -93,6 +93,13 @@ export interface TAchievement {
   updatedAt: string
   attachments?: TAttachment[]
   goal?: { id: string; title: string } | null
+  // التصنيف داخل الإطار المهني (مجال ← معيار ← معيار فرعي)
+  domainId?: string | null
+  criterionId?: string | null
+  subCriterionId?: string | null
+  domain?: { id: string; name: string; isOfficial: boolean } | null
+  criterion?: { id: string; name: string; isOfficial: boolean } | null
+  subCriterion?: { id: string; name: string; isOfficial: boolean; officialCode?: string | null } | null
 }
 
 export interface TReflection {
@@ -111,6 +118,65 @@ export interface TDevPlan {
   period?: string | null
   indicator?: string | null
   result?: string | null
+}
+
+// ─── الإطار المهني الرسمي (عقد الواجهة — نسخ JSON من محرك الاكتمال) ───
+
+export interface TSubCriterionNode {
+  id: string
+  name: string
+  description: string | null
+  isOfficial: boolean
+  officialCode: string | null
+  sortOrder: number
+  archived: boolean
+  completed: boolean
+  completedNoEvidence: boolean
+  achievementsCount: number
+  evidenceCount: number
+  lastUpdatedAt: string | null
+}
+
+export interface TCriterionNode {
+  id: string
+  name: string
+  description: string | null
+  isOfficial: boolean
+  officialCode: string | null
+  sortOrder: number
+  archived: boolean
+  completedSubs: number
+  totalSubs: number
+  percent: number
+  subs: TSubCriterionNode[]
+}
+
+export interface TDomainNode {
+  id: string
+  name: string
+  description: string | null
+  isOfficial: boolean
+  officialCode: string | null
+  sortOrder: number
+  scope: string
+  schoolId: string | null
+  archived: boolean
+  criteriaCount: number
+  completedSubs: number
+  totalSubs: number
+  percent: number
+  criteria: TCriterionNode[]
+}
+
+export interface FrameworkData {
+  source: { authority: string; document: string; edition: string; isbn: string; approval: string }
+  schoolName: string | null
+  canManage: boolean
+  manageSchoolId: string | null
+  domains: TDomainNode[]
+  official: { completed: number; total: number; percent: number }
+  custom: { completed: number; total: number; percent: number } | null
+  unmappedCount: number
 }
 
 export interface DashboardData {
@@ -132,4 +198,10 @@ export interface DashboardData {
   recommendation: { section: import('./constants').SectionKey; value: number } | null
   recent: TAchievement[]
   drafts: TAchievement[]
+  professional?: {
+    official: { completed: number; total: number; percent: number }
+    custom: { completed: number; total: number; percent: number } | null
+    domains: { id: string; name: string; completedSubs: number; totalSubs: number; percent: number }[]
+    unmappedCount: number
+  }
 }

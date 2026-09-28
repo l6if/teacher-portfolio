@@ -69,10 +69,21 @@ async function main() {
     db.user.deleteMany(),
   ])
 
+  await populateDevDataset(db)
+}
+
+/**
+ * إنشاء مجموعة البيانات التجريبية القياسية كاملة (مستخدمون + سنوات + إنجازات + شواهد).
+ * مُصدَّرة ليعيد استخدامها مشغّل بيئة التطوير المحلية (scripts/ensure-dev-dataset.ts)
+ * على قاعدة PostgreSQL محلية فارغة — نفس البنية، بلا تكرار منطق.
+ * ⛔ لا تُستدعى إلا بعد مسح مقصود أو على قاعدة محلية فارغة.
+ */
+export async function populateDevDataset(db: PrismaClient) {
   // ═══ المستخدمون ═════════════════════════════════════════════
   const sultan = await db.user.create({
     data: {
       email: 'sultan@madrasati.sa',
+      gender: 'MALE',
       passwordHash: hashPassword(DEV_PASSWORD),
       name: 'سلطان بن حمد الحربي',
       role: 'TEACHER',
@@ -111,6 +122,7 @@ async function main() {
   const noura = await db.user.create({
     data: {
       email: 'noura@madrasati.sa',
+      gender: 'FEMALE',
       passwordHash: hashPassword(DEV_PASSWORD),
       name: 'نورة القحطاني',
       role: 'MANAGER',
@@ -125,6 +137,7 @@ async function main() {
   const ahmed = await db.user.create({
     data: {
       email: 'ahmed@madrasati.sa',
+      gender: 'MALE',
       passwordHash: hashPassword(DEV_PASSWORD),
       name: 'أحمد الشمري',
       role: 'TEACHER',
@@ -144,6 +157,7 @@ async function main() {
   const fatimah = await db.user.create({
     data: {
       email: 'fatimah@madrasati.sa',
+      gender: 'FEMALE',
       passwordHash: hashPassword(DEV_PASSWORD),
       name: 'فاطمة الزهراني',
       role: 'TEACHER',
@@ -169,6 +183,7 @@ async function main() {
   const khaled = await db.user.create({
     data: {
       email: 'khaled@madrasati.sa',
+      gender: 'MALE',
       passwordHash: hashPassword(DEV_PASSWORD),
       name: 'خالد العتيبي',
       role: 'TEACHER',

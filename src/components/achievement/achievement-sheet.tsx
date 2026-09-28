@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useApp } from '@/store/app-store'
-import { useScope, useAchievements, useSession } from '@/hooks/use-data'
+import { useScope, useAchievements, useSession, useFramework } from '@/hooks/use-data'
 import { TYPES, TYPE_MAP, TYPE_FIELDS, STATUS_META, type AchievementType, type AchievementStatus } from '@/lib/constants'
 import { Icon } from '@/components/shared/icon'
 import { AiAssistButton, AIFieldAssistant, type AiAssistContext } from '@/components/shared/ai-assist'
 import { AttachmentsEditor } from './attachments-editor'
 import { HijriDateField } from '@/components/shared/hijri-date-picker'
 import { officialTitle } from '@/components/report/official-report'
+import { AchievementClassification } from '@/components/framework/achievement-classification'
 import { improvement, formatNumber, toDateInput } from '@/lib/format'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -89,6 +90,8 @@ export function AchievementSheet() {
   /** معاينة التقرير مفتوحة فوق النموذج — أي تفاعل معها يقع خارج ورقة Radix
    *  فيحاول إغلاقها؛ نمنع الإغلاق حتى يبقى النموذج محمّلاً بحالته عند الرجوع للتعديل */
   const previewOpen = useApp((s) => Boolean(s.previewConfig))
+  const formSubCriterionId = useApp((s) => s.formSubCriterionId)
+  const formSubLabels = useApp((s) => s.formSubLabels)
   const { yearId, readonly } = useScope()
   const qc = useQueryClient()
 
@@ -98,6 +101,7 @@ export function AchievementSheet() {
   const [attachments, setAttachments] = useState<TAttachment[]>([])
   const [goalId, setGoalId] = useState('')
   const [status, setStatus] = useState<AchievementStatus>('DRAFT')
+  const [subCriterionId, setSubCriterionId] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   /** إجراءات التقرير من النموذج — أثناء إفراد الحفظ المعلق قبل فتح المعاينة/الطباعة */
   const [reportBusy, setReportBusy] = useState(false)
@@ -115,6 +119,7 @@ export function AchievementSheet() {
   const { data: goalsData } = useAchievements()
   const goals = goalsData?.goals ?? []
   const { data: sessionData } = useSession()
+  const { data: frameworkData } = useFramework()
 
   /** إجراءات التقرير الرسمي من النموذج — إفراد آخر حفظ تلقائي معلق أولًا (بلا فقدان
    *  المسودة — حالة النموذج لا تُمس)، ثم إبطال كاش التقرير وإعادة جلبه حتى تعكس
@@ -133,9 +138,19 @@ export function AchievementSheet() {
     }
   }
 
-  /** سياق المساعد الذكي المشترك — بيانات المستخدم والنموذج الحالي كاملًا.
-   *  الحقول المهمة تمر عبر خاناتها المسمّاة (يبني كل Action تعليماته منها)،
-   *  وحقول الأدوات (ملاحظات…) تمرر نصها في `text` كما في الأصل. */
+  /** أسماء التصنيف الحالي — لسياق المساعد الذكي (القسم 52) وللعرض */
+  const classificationNames = useMemo(() => {
+    if (!frameworkData || !subCriterionId) return null
+    for (const d of frameworkData.domains) {
+      for (const c of d.criteria) {
+        const s = c.subs.find((x) => x.id === subCriterionId)
+        if (s) return { domainName: d.name, criterionName: c.name, subName: s.name }
+      }
+    }
+    return null
+  }, [frameworkData, subCriterionId])
+
+  /** سياق المساعد الذكي المشترك — من بيانات المستخدم والنموذج الحالي والإطار المهني (القسم 52) */
   const aiContext = useCallback((key?: string): AiAssistContext => ({
     achievementType: type ? (TYPE_MAP[type]?.label ?? type) : undefined,
     title: cut(form.title),
@@ -151,8 +166,12 @@ export function AchievementSheet() {
     generalGoal: cut(form.goalText),
     subject: sessionData?.user?.subject ?? undefined,
     stage: sessionData?.user?.stage ?? undefined,
+    // التصنيف المهني يجعل الاقتراحات أدق — دون تغيير التصنيف تلقائيًا
+    frameworkDomain: classificationNames?.domainName,
+    frameworkCriterion: classificationNames?.criterionName,
+    frameworkSubCriterion: classificationNames?.subName,
     text: key && !NAMED_CONTEXT_KEYS.has(key) ? cut(form[key]) : undefined,
-  }), [form, type, sessionData?.user?.subject, sessionData?.user?.stage, goals, goalId])
+  }), [form, type, sessionData?.user?.subject, sessionData?.user?.stage, goals, goalId, classificationNames])
 
   // فتح الورقة: إعداد الحالة
   useEffect(() => {
@@ -169,6 +188,9 @@ export function AchievementSheet() {
           setType(a.type as AchievementType)
           const f: FormState = {}
           for (const [k, v] of Object.entries(a)) {
+            // مفاتيح التصنيف المهني تُدار بحالة مستقلة (subCriterionId) — لا تدخل
+            // نموذج الحفظ التلقائي حتى لا تعيد كتابة تصنيف قديم فوق تصنيف جديد
+            if (k === 'domainId' || k === 'criterionId' || k === 'subCriterionId') continue
             if (k === 'date') f.date = toDateInput(a.date)
             else if (typeof v === 'string' || typeof v === 'number') f[k] = v?.toString() ?? ''
           }
@@ -176,22 +198,24 @@ export function AchievementSheet() {
           setAttachments((a.links ?? []).map((l) => l.attachment).filter((x): x is TAttachment => Boolean(x)))
           setGoalId(a.goalId ?? '')
           setStatus(a.status as AchievementStatus)
+          setSubCriterionId(a.subCriterionId ?? null)
           setViewMode(Boolean(readonly)) // المدير يقرأ فقط
           setLoaded(true)
         })
         .catch(() => toast.error('تعذر تحميل الإنجاز'))
     } else {
-      // إضافة جديدة
+      // إضافة جديدة — مع تعبئة التصنيف إن جاءت من «إضافة إنجاز لهذا المعيار» (القسم 13)
       setId(null)
       setType(formType)
       setForm({})
       setAttachments([])
       setGoalId('')
       setStatus('DRAFT')
+      setSubCriterionId(formSubCriterionId)
       setViewMode(false)
       setLoaded(true)
     }
-  }, [open, formAchievementId, formType, readonly])
+  }, [open, formAchievementId, formType, formSubCriterionId, readonly])
   const fields = useMemo(() => (type ? TYPE_FIELDS[type] : []), [type])
 
   /** إنشاء مسودة فورًا عند بدء الكتابة — حارس يمنع تكرار المسودات عند الكتابة المتزامنة */
@@ -203,7 +227,14 @@ export function AchievementSheet() {
       const res = await fetch('/api/achievements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, title: form.title || 'إنجاز بدون عنوان', status: 'DRAFT', yearId }),
+        body: JSON.stringify({
+          type,
+          title: form.title || 'إنجاز بدون عنوان',
+          status: 'DRAFT',
+          yearId,
+          // التصنيف المُسبق يُرسل مع إنشاء المسودة إن وُجد
+          subCriterionId: subCriterionId ?? undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -218,7 +249,7 @@ export function AchievementSheet() {
     } finally {
       draftPromise.current = null
     }
-  }, [id, type, form.title, yearId])
+  }, [id, type, form.title, yearId, subCriterionId])
 
   /** حفظ تلقائي بعد 1.5 ثانية من التوقف — يخزّن المُنفِّذ المعلق ليُفرَغ فورًا عند الطلب */
   const persist = useCallback((nextForm: FormState, nextStatus?: AchievementStatus, nextGoalId?: string, nextAttachments?: TAttachment[]) => {
@@ -227,7 +258,9 @@ export function AchievementSheet() {
     const doPatch = async (aid: string) => {
       setSaveState('saving')
       try {
-        const body: Record<string, unknown> = { ...nextForm, status: nextStatus ?? status, goalId: nextGoalId !== undefined ? nextGoalId : goalId }
+        // جسم الحفظ التلقائي: حقول النموذج فقط — التصنيف يُحفظ بمساره الفوري المستقل
+        const { domainId: _d, criterionId: _c, subCriterionId: _s, ...formFields } = nextForm
+        const body: Record<string, unknown> = { ...formFields, status: nextStatus ?? status, goalId: nextGoalId !== undefined ? nextGoalId : goalId }
         if (nextAttachments) body.attachmentIds = nextAttachments.map((a) => a.id)
         else body.attachmentIds = attachments.map((a) => a.id)
         const res = await fetch(`/api/achievements/${aid}`, {
@@ -287,6 +320,26 @@ export function AchievementSheet() {
     persist(next)
   }
 
+  /** تحديث التصنيف المهني — يُحفظ فورًا (لا ينتظر التوقف عن الكتابة) */
+  const setClassification = async (nextSubId: string | null) => {
+    setSubCriterionId(nextSubId)
+    if (viewMode) return
+    let aid = id
+    if (!aid) aid = await ensureDraft()
+    if (!aid) return
+    try {
+      const res = await fetch(`/api/achievements/${aid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subCriterionId: nextSubId }),
+      })
+      if (!res.ok) throw new Error()
+      await qc.invalidateQueries({ queryKey: ['framework'] })
+    } catch {
+      toast.error('تعذر حفظ التصنيف — جرّب مرة أخرى')
+    }
+  }
+
   /** الحفظ النهائي وإغلاق النافذة */
   const finish = async (finalStatus?: AchievementStatus) => {
     const st = finalStatus ?? status
@@ -299,7 +352,7 @@ export function AchievementSheet() {
           const res = await fetch(`/api/achievements/${aid}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...form, status: st, goalId, attachmentIds: attachments.map((a) => a.id) }),
+            body: JSON.stringify({ ...form, status: st, goalId, subCriterionId: subCriterionId ?? '', attachmentIds: attachments.map((a) => a.id) }),
           })
           if (!res.ok) throw new Error()
         } catch {
@@ -597,6 +650,16 @@ export function AchievementSheet() {
                   </div>
                 </div>
               )}
+
+              {/* التصنيف على الإطار المهني (مجال ← معيار ← معيار فرعي) —
+                  key يعيد تركيب المحدد عند تبديل الإنجاز */}
+              <AchievementClassification
+                key={formAchievementId ?? `new-${formSubCriterionId ?? 'none'}`}
+                value={subCriterionId}
+                onChange={setClassification}
+                viewMode={viewMode}
+                presetLabel={formSubLabels}
+              />
 
               {/* الحالة */}
               <div className="space-y-2">

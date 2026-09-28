@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApp } from '@/store/app-store'
-import type { DashboardData, TAchievement, TGoal, TAttachment, TReflection, TDevPlan, TYear, TUser } from '@/lib/types'
+import type { DashboardData, TAchievement, TGoal, TAttachment, TReflection, TDevPlan, TYear, TUser, FrameworkData } from '@/lib/types'
 
 async function j<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -166,4 +166,33 @@ export function useManagerTeachers() {
 export function useInvalidate() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries()
+}
+
+// ═══ الإطار المهني الرسمي ═══════════════════════════════════════════
+
+export function useFramework() {
+  const { viewUserId } = useScope()
+  return useQuery<FrameworkData>({
+    queryKey: ['framework', viewUserId ?? 'me'],
+    queryFn: () => j(`/api/framework${viewUserId ? `?userId=${viewUserId}` : ''}`),
+    staleTime: 30_000,
+  })
+}
+
+/** إجراء إدارة الهيكل المخصص (مدير/مسؤول) — يبطل استعلامات الإطار عند النجاح */
+export function useFrameworkManage() {
+  const qc = useQueryClient()
+  const scope = useScope()
+  return async (payload: Record<string, unknown>) => {
+    const res = await fetch('/api/framework/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body.error ?? 'تعذر تنفيذ الإجراء')
+    await qc.invalidateQueries({ queryKey: ['framework'] })
+    await qc.invalidateQueries({ queryKey: ['dashboard', scope.qs()] })
+    return body
+  }
 }

@@ -11,7 +11,7 @@ import {
   Unlink, Archive, ArchiveRestore, Building2, BookOpen, Star, ArrowRight,
   ArrowLeft, FileUp, Info, CheckCircle2, Copy, Send, Bookmark, Layers,
   ClipboardList, FolderKanban, BadgeCheck, LogOut, RefreshCw, SquarePen,
-  FileBadge, ZoomIn, ZoomOut, MoonStar, Landmark, FileCheck2,
+  FileBadge, ZoomIn, ZoomOut, MoonStar, Landmark, FileCheck2, Puzzle, ScrollText,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -26,7 +26,7 @@ const ICONS: Record<string, LucideIcon> = {
   Unlink, Archive, ArchiveRestore, Building2, BookOpen, Star, ArrowRight,
   ArrowLeft, FileUp, Info, CheckCircle2, Copy, Send, Bookmark, Layers,
   ClipboardList, FolderKanban, BadgeCheck, LogOut, RefreshCw, SquarePen,
-  FileBadge, ZoomIn, ZoomOut, MoonStar, Landmark, FileCheck2,
+  FileBadge, ZoomIn, ZoomOut, MoonStar, Landmark, FileCheck2, Puzzle, ScrollText,
 }
 
 export function Icon({ name, className, strokeWidth = 2 }: { name: string; className?: string; strokeWidth?: number }) {

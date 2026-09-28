@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser, safeJson, sanitizeInternal } from '@/lib/session'
+import { resolveClassification } from '@/lib/framework-classification'
 
 // تفاصيل إنجاز واحد
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,6 +14,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       links: { include: { attachment: true } },
       goal: { select: { id: true, title: true } },
+      domain: { select: { id: true, name: true, isOfficial: true } },
+      criterion: { select: { id: true, name: true, isOfficial: true } },
+      subCriterion: { select: { id: true, name: true, isOfficial: true, officialCode: true } },
     },
   })
   if (!achievement) return NextResponse.json({ error: 'الإنجاز غير موجود' }, { status: 404 })
@@ -53,6 +57,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ('date' in rest) data.date = rest.date ? new Date(rest.date) : null
   if ('goalId' in rest) data.goalId = rest.goalId || null
 
+  // التصنيف المهني: يُعالج فقط إذا وُجد أحد مفاتيحه في الجسم (دلالة PATCH)،
+  // ويُشتق دائمًا من المعيار الفرعي المختار فلا يقبل ثلاثة متناقضة
+  if ('subCriterionId' in rest || 'criterionId' in rest || 'domainId' in rest) {
+    const classification = await resolveClassification(rest, me.school ?? null)
+    if (classification === null) {
+      return NextResponse.json({ error: 'المعيار المختار غير موجود أو خارج نطاق مدرستك' }, { status: 400 })
+    }
+    data.domainId = classification.domainId
+    data.criterionId = classification.criterionId
+    data.subCriterionId = classification.subCriterionId
+  }
+
   if (Object.keys(data).length) {
     await db.achievement.update({ where: { id }, data })
   }
@@ -75,7 +91,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const updated = await db.achievement.findUnique({
     where: { id },
-    include: { links: { include: { attachment: true } }, goal: { select: { id: true, title: true } } },
+    include: {
+      links: { include: { attachment: true } },
+      goal: { select: { id: true, title: true } },
+      domain: { select: { id: true, name: true, isOfficial: true } },
+      criterion: { select: { id: true, name: true, isOfficial: true } },
+      subCriterion: { select: { id: true, name: true, isOfficial: true, officialCode: true } },
+    },
   })
   return NextResponse.json(sanitizeInternal({ achievement: updated }))
 }
