@@ -13,6 +13,7 @@ async function main() {
     'qa-probe-nonexistent-9182@madrasati.sa',
     'sha3ry66@gmail.com',
     'e2e-b2@example.com',
+    'smoke-final-check@example.com',
   ]
   const url = process.env.DATABASE_URL ?? ''
   if (!url.startsWith('postgres')) {
