@@ -113,12 +113,23 @@ export function ReflectionSection({ readonly }: { readonly: boolean }) {
                     {q.label}
                   </label>
                   {!readonly && (
-                    <AiAssistButton
-                      action="improveText"
-                      label="تحسين"
-                      context={{ text: answers[q.key] || undefined, achievementType: 'REFLECTION' }}
-                      onApplyText={(v) => onChange(q.key, v)}
-                    />
+                    <span className="flex flex-wrap items-center gap-1">
+                      <AiAssistButton
+                        action="improveText"
+                        label="تحسين"
+                        context={{ text: answers[q.key] || undefined, achievementType: 'REFLECTION' }}
+                        onApplyText={(v) => onChange(q.key, v)}
+                      />
+                      {/* «اختصر» — يظهر فقط عند وجود نص فعلي في السؤال (SHORTEN_CONTENT) */}
+                      {(answers[q.key] ?? '').trim().length >= 5 && (
+                        <AiAssistButton
+                          action="shorten"
+                          label="اختصر"
+                          context={{ text: (answers[q.key] ?? '').trim().slice(0, 4000), fieldTarget: 'reflection', achievementType: 'REFLECTION' }}
+                          onApplyText={(v) => onChange(q.key, v)}
+                        />
+                      )}
+                    </span>
                   )}
                 </div>
                 <p className="mt-0.5 mb-3 text-[11px] text-muted-foreground">{q.hint}</p>

@@ -55,22 +55,26 @@ function TypePicker({ onPick }: { onPick: (t: AchievementType) => void }) {
 /** سجل إجراءات المساعد لكل حقل — Action Registry:
  *  الحقول المهمة السبعة تستخدم الزر الموحد AIFieldAssistant (عملية مستقلة لكل حقل،
  *  تتكيف تلقائيًا: فارغ → اقتراح / فيه نص → تحسين)، وتبقى أدوات
- *  الهدف العام والملاحظات كما هي دون تغيير. */
-const FIELD_AI_ACTIONS: Record<string, { action: string; label?: string; assistant?: boolean; needsText?: boolean; needsContext?: boolean }[]> = {
-  title: [{ action: 'suggestAchievementTitle', assistant: true }],
-  description: [{ action: 'suggestShortDescription', assistant: true }],
-  problem: [{ action: 'suggestProblem', assistant: true }],
-  execution: [{ action: 'suggestExecution', assistant: true }],
-  actions: [{ action: 'suggestStages', assistant: true }],
-  results: [{ action: 'suggestResults', assistant: true }],
-  impact: [{ action: 'suggestImpact', assistant: true }],
+ *  الهدف العام والملاحظات كما هي دون تغيير.
+ *  «اختصر» (SHORTEN_CONTENT): متاح لكل الحقل النصية التي فيها نص فعلًا —
+ *  يرسل النص الكامل (حتى ٤ آلاف حرف) مع مفتاح الحقل لوعي الصياغة. */
+const FIELD_AI_ACTIONS: Record<string, { action: string; label?: string; assistant?: boolean; needsText?: boolean; needsContext?: boolean; sendFullText?: boolean }[]> = {
+  title: [{ action: 'suggestAchievementTitle', assistant: true }, { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true }],
+  description: [{ action: 'suggestShortDescription', assistant: true }, { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true }],
+  problem: [{ action: 'suggestProblem', assistant: true }, { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true }],
+  execution: [{ action: 'suggestExecution', assistant: true }, { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true }],
+  actions: [{ action: 'suggestStages', assistant: true }, { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true }],
+  results: [{ action: 'suggestResults', assistant: true }, { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true }],
+  impact: [{ action: 'suggestImpact', assistant: true }, { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true }],
   goalText: [
     { action: 'suggestGeneralObjective', label: 'اقتراح الهدف العام', needsContext: true },
     { action: 'improveText', label: 'تحسين', needsText: true },
+    { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true },
   ],
   notes: [
     { action: 'proofread', label: 'تدقيق لغوي', needsText: true },
     { action: 'improveText', label: 'تحسين', needsText: true },
+    { action: 'shorten', label: 'اختصر', needsText: true, sendFullText: true },
   ],
 }
 
@@ -79,6 +83,9 @@ const NAMED_CONTEXT_KEYS = new Set(['title', 'description', 'problem', 'executio
 
 /** قص طرفي عميل — يبقي الجسم ضمن حد الحجم الخادمي ويكفي للاقتراح */
 const cut = (v?: string) => (v && v.trim() ? v.trim().slice(0, 600) : undefined)
+
+/** نص كامل بلا قص طرفي — «اختصر» يعالج النص كما هو (حتى ٤ آلاف حرف داخل الحد الخادمي) */
+const full = (v?: string) => (v && v.trim() ? v.trim().slice(0, 4000) : undefined)
 
 export function AchievementSheet() {
   const open = useApp((s) => s.formOpen)
@@ -400,6 +407,11 @@ export function AchievementSheet() {
       if (a.needsContext && !form.title?.trim()) return false
       return true
     })
+    /** سياق الحقل: «اختصر» يرسل النص الكامل ومفتاح الحقل (وعي الصياغة) */
+    const fieldCtx = (a: { sendFullText?: boolean }) =>
+      a.sendFullText
+        ? { ...aiContext(), text: full(form[key]), fieldTarget: key }
+        : aiContext(key)
 
     if (def.type === 'textarea') {
       return (
@@ -424,7 +436,7 @@ export function AchievementSheet() {
                   key={a.action}
                   action={a.action}
                   label={a.label}
-                  context={aiContext(key)}
+                  context={fieldCtx(a)}
                   onApplyText={(v) => setField(key, v)}
                 />
               ))}
@@ -489,7 +501,7 @@ export function AchievementSheet() {
                 key={a.action}
                 action={a.action}
                 label={a.label}
-                context={aiContext(key)}
+                context={fieldCtx(a)}
                 onApplyText={(v) => setField(key, v)}
               />
             ))}

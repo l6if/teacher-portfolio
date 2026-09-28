@@ -31,16 +31,23 @@ export interface ReportAIContextInput {
   text?: string
   // أهداف مدخلة مسبقًا (لتنفيذ مرتبط بها)
   objectives?: string[]
+  // ── «اختصر» (SHORTEN_CONTENT) — وعي بنوع الحقل + وضع «اختصر أكثر» ──
+  /** الحقل المستهدف بالاختصار (title/description/goalText/problem/execution/actions/results/impact/notes…) */
+  fieldTarget?: string
+  /** "1" عند طلب «اختصر أكثر» — يعمل على النسخة المختصرة الحالية لا الأصل */
+  shortenMore?: string
 }
 
 const MAX_FIELD_CHARS = 700
-const MAX_TOTAL_CHARS = 3000
+/** نص المعالجة (text) يسمح له بطول أكبر — «اختصر» و«تحسين» يعالجان نصوصًا طويلة (حتى ~700 كلمة) */
+const MAX_TEXT_CHARS = 4000
+const MAX_TOTAL_CHARS = 5200
 const MAX_OBJECTIVES = 8
 
 /** تنقية قيمة واحدة: قص + إزالة أنماط البيانات الحساسة */
-function cleanValue(raw: unknown): string {
+function cleanValue(raw: unknown, limit = MAX_FIELD_CHARS): string {
   if (typeof raw !== 'string') return ''
-  let v = raw.trim().slice(0, MAX_FIELD_CHARS)
+  let v = raw.trim().slice(0, limit)
   // إزالة أنماط أرقام هوية سعودية (10 خانات تبدأ بـ1 أو2) وهواتف (05xxxxxxxxx / +966...)
   v = v.replace(/\b(?:[12]\d{9}|0?5\d{8}|\+?9665?\d{8})\b/g, '[رقم محذوف]')
   return v
@@ -60,10 +67,12 @@ export function buildReportAIContext(input: ReportAIContextInput): Record<string
     'description', 'stages', 'goal', 'generalGoal',
     'beneficiaries', 'duration', 'achievementType', 'field', 'stage', 'subject', 'grade',
     'frameworkDomain', 'frameworkCriterion', 'frameworkSubCriterion',
+    'fieldTarget', 'shortenMore',
   ]
   let total = 0
   for (const f of fields) {
-    const v = cleanValue(input[f])
+    const limit = f === 'text' ? MAX_TEXT_CHARS : MAX_FIELD_CHARS
+    const v = cleanValue(input[f], limit)
     if (v && total + v.length <= MAX_TOTAL_CHARS) {
       out[f] = v
       total += v.length
@@ -104,6 +113,8 @@ export function contextToPromptBlock(context: Record<string, string>): string {
     duration: 'مدة التنفيذ',
     text: 'النص الموجود',
     objectives: 'أهداف مدخلة',
+    fieldTarget: 'الحقل المستهدف',
+    shortenMore: 'وضع اختصار أكثر',
   }
   const lines: string[] = []
   for (const [k, v] of Object.entries(context)) {

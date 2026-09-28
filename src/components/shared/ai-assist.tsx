@@ -32,6 +32,9 @@ export interface AiAssistContext {
   frameworkDomain?: string
   frameworkCriterion?: string
   frameworkSubCriterion?: string
+  // ── «اختصر» (SHORTEN_CONTENT) — الحقل المستهدف + وضع «اختصر أكثر» ──
+  fieldTarget?: string
+  shortenMore?: string
 }
 
 type AiResult =
@@ -48,6 +51,12 @@ const FIELD_TEXT_KEYS: Record<string, string> = {
   suggestProblem: 'problem',
   suggestResults: 'results',
   suggestImpact: 'impact',
+  shorten: 'shortenedText',
+}
+
+/** نصوص مخصصة لكل عملية في الواجهة — «اختصر» له تدفقه الخاص (SHORTEN_CONTENT) */
+const ACTION_UI: Record<string, { loading?: string; applyLabel?: string; shortenMore?: boolean }> = {
+  shorten: { loading: 'جارٍ الاختصار…', applyLabel: 'استخدام المختصر', shortenMore: true },
 }
 
 /** تحويل استجابة API (المتحقق منها خادميًا) إلى شكل العرض */
@@ -129,12 +138,15 @@ interface DialogProps {
   onApplyList: (items: string[]) => void
   onApplyDraft: (fields: Record<string, string>) => void
   onRegenerate: () => void
+  /** «اختصر أكثر» — يعمل على النسخة المختصرة الحالية (SHORTEN_CONTENT فقط) */
+  onShortenMore?: (currentText: string) => void
 }
 
 function AiSuggestionDialog({
-  open, action, loading, error, result, requestId, fieldLabel, onClose, onApplyText, onApplyList, onApplyDraft, onRegenerate,
+  open, action, loading, error, result, requestId, fieldLabel, onClose, onApplyText, onApplyList, onApplyDraft, onRegenerate, onShortenMore,
 }: DialogProps) {
   if (!open) return null
+  const ui = ACTION_UI[action] ?? {}
 
   // الجزء التفاعلي يُعاد تركيبه مع كل نتيجة جديدة (key) — حالة نظيفة بلا effects
   return (
@@ -166,7 +178,7 @@ function AiSuggestionDialog({
           {loading && (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Icon name="Loader2" className="size-7 animate-spin text-primary" />
-              <p className="text-sm font-medium text-foreground">جاري إعداد الاقتراح…</p>
+              <p className="text-sm font-medium text-foreground">{ui.loading ?? 'جاري إعداد الاقتراح…'}</p>
               <p className="text-xs text-muted-foreground">يستغرق عادة بضع ثوانٍ</p>
             </div>
           )}
@@ -190,7 +202,17 @@ function AiSuggestionDialog({
           )}
 
           {!loading && !error && result && (
-            <PreviewBody key={requestId} result={result} onClose={onClose} onApplyText={onApplyText} onApplyList={onApplyList} onApplyDraft={onApplyDraft} onRegenerate={onRegenerate} />
+            <PreviewBody
+              key={requestId}
+              action={action}
+              result={result}
+              onClose={onClose}
+              onApplyText={onApplyText}
+              onApplyList={onApplyList}
+              onApplyDraft={onApplyDraft}
+              onRegenerate={onRegenerate}
+              onShortenMore={onShortenMore}
+            />
           )}
         </div>
       </div>
@@ -201,15 +223,18 @@ function AiSuggestionDialog({
 // ═══ الجسم التفاعلي — يُعاد تركيبه مع كل نتيجة جديدة (حالة نظيفة) ═══
 
 function PreviewBody({
-  result, onClose, onApplyText, onApplyList, onApplyDraft, onRegenerate,
+  action, result, onClose, onApplyText, onApplyList, onApplyDraft, onRegenerate, onShortenMore,
 }: {
+  action: string
   result: NonNullable<AiResult>
   onClose: () => void
   onApplyText: (v: string) => void
   onApplyList: (items: string[]) => void
   onApplyDraft: (fields: Record<string, string>) => void
   onRegenerate: () => void
+  onShortenMore?: (currentText: string) => void
 }) {
+  const ui = ACTION_UI[action] ?? {}
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [selected, setSelected] = useState<Set<number>>(
@@ -275,6 +300,18 @@ function PreviewBody({
             {editing === null ? 'تعديل' : 'عرض النهائي'}
           </Button>
           <div className="flex flex-wrap items-center gap-2">
+            {/* «اختصر أكثر» — يعمل على النسخة المختصرة الحالية (أو المعدلة) لا الأصل */}
+            {ui.shortenMore && onShortenMore && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onShortenMore(editing !== null ? editValue : result.value)}
+                className="rounded-full text-xs"
+              >
+                <Icon name="Shrink" className="size-3.5" />
+                اختصر أكثر
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={onRegenerate} className="rounded-full text-xs">
               <Icon name="RotateCcw" className="size-3.5" />
               إعادة التوليد
@@ -282,7 +319,7 @@ function PreviewBody({
             <Button variant="outline" size="sm" onClick={onClose} className="rounded-full text-xs">إلغاء</Button>
             <Button size="sm" onClick={apply} className="rounded-full text-xs">
               <Icon name="Check" className="size-3.5" />
-              استخدام الاقتراح
+              {ui.applyLabel ?? 'استخدام الاقتراح'}
             </Button>
           </div>
         </div>
@@ -425,7 +462,8 @@ export function AiAssistButton({
   const contextRef = useRef(context)
   contextRef.current = context
 
-  const run = useCallback(async () => {
+  /** محرك موحد: override اختياري يُطبّق فوق السياق الحي (يُستخدم لـ«اختصر أكثر») */
+  const runWith = useCallback(async (override?: Partial<AiAssistContext>) => {
     setLoading(true)
     setError(null)
     setResult(null)
@@ -435,7 +473,7 @@ export function AiAssistButton({
       const res = await fetch(`/api/ai/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: contextRef.current }),
+        body: JSON.stringify({ context: { ...contextRef.current, ...override } }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -449,6 +487,15 @@ export function AiAssistButton({
       setLoading(false)
     }
   }, [action])
+
+  const run = useCallback(() => runWith(), [runWith])
+
+  /** «اختصر أكثر» (SHORTEN_CONTENT): المدخل هو النسخة المختصرة الحالية + علم الوضع —
+   *  النص الأصلي في الحقل لا يُمس إطلاقاً حتى يضغط المستخدم «استخدام المختصر» */
+  const runShortenMore = useCallback(
+    (currentText: string) => runWith({ text: currentText, shortenMore: '1' }),
+    [runWith],
+  )
 
   return (
     <>
@@ -477,6 +524,7 @@ export function AiAssistButton({
         onApplyList={(items) => { onApplyList?.(items); toast.success('تم إدخال الاقتراح — يمكنك تعديله بحرية') }}
         onApplyDraft={(fields) => { onApplyDraft?.(fields); toast.success('تمت تعبئة المسودة في الحقول — عدّلها بحرية') }}
         onRegenerate={run}
+        onShortenMore={runShortenMore}
       />
     </>
   )
