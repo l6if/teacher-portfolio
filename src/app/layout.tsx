@@ -14,9 +14,8 @@ export const metadata: Metadata = {
   title: "ملف إنجاز المعلم",
   description:
     "منصة احترافية لبناء ملف إنجاز المعلم تدريجيًا طوال العام، وتوثيق العمل والنتائج والأثر المهني، وتحويلها إلى تقارير أنيقة قابلة للطباعة.",
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
+  // الأيقونة: أصول محلية بهوية التطبيق (app/icon.svg + app/favicon.ico + app/apple-icon.png)
+  // قبعة التخرج البيضاء على أخضر العلامة — لا أيقونات إطار عمل أو استضافة.
 };
 
 export const viewport: Viewport = {
