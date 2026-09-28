@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '@/store/app-store'
 import { useReport } from '@/hooks/use-data'
 import { SECTIONS, TYPE_LABEL, STATUS_LABEL, ATTACHMENT_KINDS } from '@/lib/constants'
@@ -9,6 +9,7 @@ import { LoadingState, ErrorState } from '@/components/shared/states'
 import { RC, S, RT, RR, REPORT_BRAND, FIELD_LABELS, footerLine, schoolLine, educationAdminLine, educationOfficeLine } from '@/lib/report-tokens'
 import { useReportImages } from './report-image-context'
 import { getGenderedLabels } from '@/lib/gender'
+import { isOriginalSize } from '@/components/shared/attachment-ui'
 import type { TAchievement, TAttachment } from '@/lib/types'
 import type { ReportData } from '@/hooks/use-data'
 
@@ -86,40 +87,113 @@ export function FileEvidenceList({ files }: { files: TAttachment[] }) {
   )
 }
 
-/** معرض صور تحريري — 1: Hero / 2: نصفان / 3: أثلاث / 4+: شبكة 2×2 */
+/** معرض صور التقرير — واعٍ بحجم العرض المستقل لكل صورة (Patch B):
+ *  مصغّر COMPACT (الافتراضي، مناسب لمساحة A4) أو أصلي ORIGINAL (أكبر حجم آمن داخل
+ *  الصفحة). النسبة الباعية محفوظة دائمًا عبر object-fit: contain — لا قص ولا تمديد،
+ *  والصورة مع اسمها وحدة واحدة غير قابلة للانقسام بين صفحتين. الصور الطويلة جدًا
+ *  (نمط عمودي/لقطة شاشة ممتدة) تأخذ صفًّا مستقلًا حتى لا تُحشر في عمود صغير.
+ *  المكون نفسه يُستخدم في المعاينة والطباعة وPDF — التكافؤ مضمون بنيويًا. */
 export function Gallery({ images }: { images: (TAttachment & { url: string })[] }) {
   const { toImgUrl } = useReportImages()
+  /** الأبعاد الطبيعية المقاسة عند التحميل — لتمييز الصور العمودية الشديدة الطول */
+  const [dims, setDims] = useState<Record<string, { w: number; h: number }>>({})
   if (!images.length) return null
-  const rows: typeof images[] = []
-  if (images.length <= 3) rows.push(images)
-  else for (let i = 0; i < images.length; i += 2) rows.push(images.slice(i, i + 2))
 
-  const config = images.length === 1
-    ? { height: '58mm', radius: RR.img }
-    : images.length === 2
-      ? { height: '44mm', radius: RR.img }
-      : images.length === 3
-        ? { height: '34mm', radius: RR.img }
-        : { height: '38mm', radius: RR.img }
+  const isTall = (img: TAttachment & { url: string }) => {
+    const d = dims[img.id]
+    return Boolean(d && d.w > 0 && d.h / d.w >= 1.35)
+  }
+
+  // بناء الصفوف: أصلي أو عمودي طويل → صف مستقل، والمصغّرة العادية تُقرن عمودين
+  const rows: { images: (TAttachment & { url: string })[]; wide: boolean }[] = []
+  let pairAcc: (TAttachment & { url: string })[] = []
+  const flushPair = () => {
+    if (pairAcc.length) {
+      rows.push({ images: pairAcc, wide: false })
+      pairAcc = []
+    }
+  }
+  for (const img of images) {
+    const solo = isOriginalSize(img) || isTall(img)
+    if (solo) {
+      flushPair()
+      rows.push({ images: [img], wide: true })
+    } else {
+      pairAcc.push(img)
+      if (pairAcc.length === 2) flushPair()
+    }
+  }
+  flushPair()
+
+  const onImgLoad = (id: string, e: React.SyntheticEvent<HTMLImageElement>) => {
+    const el = e.currentTarget
+    if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+      setDims((d) => (d[id]?.w === el.naturalWidth && d[id]?.h === el.naturalHeight ? d : { ...d, [id]: { w: el.naturalWidth, h: el.naturalHeight } }))
+    }
+  }
 
   return (
     <div style={{ marginTop: S.s3, display: 'flex', flexDirection: 'column', gap: S.s2 }}>
-      {rows.map((row, ri) => (
-        <div key={ri} className="print-avoid-break" style={{ display: 'flex', gap: S.s2, pageBreakInside: 'avoid' }}>
-          {row.map((img) => (
-            <figure key={img.id} style={{ margin: 0, flex: 1, minWidth: 0 }}>
-              <img
-                src={toImgUrl(img.url)}
-                alt={img.title}
-                style={{ width: '100%', height: config.height, objectFit: 'cover', borderRadius: config.radius, border: `0.7px solid ${RC.line}`, display: 'block' }}
-              />
-              <figcaption style={{ marginTop: '1.2mm', textAlign: 'center', ...RT.caption, color: RC.muted, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                {img.title}
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      ))}
+      {rows.map((row, ri) => {
+        const original = isOriginalSize(row.images[0])
+        return (
+          <div
+            key={ri}
+            className="print-avoid-break"
+            style={{ display: 'flex', gap: S.s2, pageBreakInside: 'avoid', justifyContent: row.images.length === 1 && !original ? 'center' : 'stretch' }}
+          >
+            {row.images.map((img) => {
+              // مفرد مصغّر: 72% من مساحة المحتوى (والعمودي الطويل 62%) — ضمن نطاق A4؛
+              // مفرد أصلي: عرض كامل بأكبر ارتفاع آمن؛ والزوج: عمودان متوازنان
+              const single = row.images.length === 1
+              const soloCompact = single && !original
+              const soloTall = soloCompact && isTall(img)
+              // الحد الأقصى للارتفاع: أصلي 162مم (أكبر مساحة آمنة بعد الترويسة/التذييل)،
+              // عمودي طويل 108مم، مفرد عادي 95مم، وزوج 88مم — كلها ضمن 80–110مم للمصغّر
+              const imgStyle: React.CSSProperties = single
+                ? {
+                    width: '100%',
+                    maxHeight: original ? '162mm' : soloTall ? '108mm' : '95mm',
+                    objectFit: 'contain',
+                    borderRadius: RR.img,
+                    border: `0.7px solid ${RC.line}`,
+                    display: 'block',
+                  }
+                : {
+                    width: '100%',
+                    maxHeight: '88mm',
+                    objectFit: 'contain',
+                    borderRadius: RR.img,
+                    border: `0.7px solid ${RC.line}`,
+                    display: 'block',
+                  }
+              return (
+                <figure
+                  key={img.id}
+                  style={{
+                    margin: 0,
+                    flex: single ? (soloCompact ? `0 0 ${soloTall ? '62%' : '72%'}` : '1 1 auto') : '1 1 0',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    pageBreakInside: 'avoid',
+                    breakInside: 'avoid',
+                  }}
+                >
+                  <img
+                    src={toImgUrl(img.url)}
+                    alt={img.title}
+                    onLoad={(e) => onImgLoad(img.id, e)}
+                    style={imgStyle}
+                  />
+                  <figcaption style={{ marginTop: '1.2mm', textAlign: 'center', ...RT.caption, color: RC.muted, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    {img.title}
+                  </figcaption>
+                </figure>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }

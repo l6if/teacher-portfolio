@@ -6,6 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── المستخدمون ───────────────────────────────────────────────
@@ -14,7 +15,17 @@ model User {
   email     String   @unique
   passwordHash String?
   name      String
-  role      String   @default("TEACHER") // TEACHER | MANAGER
+  role      String   @default("TEACHER") // TEACHER | MANAGER | SUPER_ADMIN
+
+  // حالة الحساب — الإيقاف الإداري يمنع الدخول ويُبطل الجلسة القائمة
+  status      String    @default("ACTIVE") // ACTIVE | SUSPENDED
+  // الجنس — صياغة عربية واعية (null = محايد مؤقتًا حتى يختار المستخدم)
+  gender      String? // MALE | FEMALE
+  lastLoginAt DateTime?
+  // نسخة الجلسة — تُرفع عند تغيير كلمة المرور لإبطال كل التوكنات القديمة
+  sessionEpoch Int      @default(0)
+  // حساب المعاينة التجريبي (معزول — لا يرى بيانات حقيقية)
+  isDemo     Boolean   @default(false)
 
   // البيانات المهنية
   school          String?
@@ -47,8 +58,48 @@ model User {
   attachments Attachment[]
   reflections Reflection[]
   devPlans    DevPlan[]
+  resetTokens PasswordResetToken[]
+  aiLogs      AiUsageLog[]
 
   @@index([role])
+  @@index([status])
+  @@index([isDemo])
+}
+
+// ─── توكنات استعادة كلمة المرور ─────────────────────────────
+// يُخزّن هاش التوكن فقط (sha256) — الخام يُرسل للمستخدم عبر البريد مرة واحدة.
+// استخدام واحد + صلاحية محدودة (45 دقيقة افتراضيًا).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─── سجل استخدام الذكاء الاصطناعي ────────────────────────────
+// سجل خفيف بلا محتوى: لا يُخزّن الـ prompt ولا الـ response — خصوصية أولًا.
+model AiUsageLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String // suggestObjectives | improveText | proofread | ...
+  model      String?
+  success    Boolean  @default(true)
+  latencyMs  Int?
+  promptTokens     Int?
+  completionTokens Int?
+  errorKind  String? // timeout | rate_limit | provider_error | invalid_output
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
 }
 
 // ─── السنوات الدراسية ─────────────────────────────────────────
@@ -93,12 +144,84 @@ model Goal {
   @@index([userId, yearId])
 }
 
+// ─── الإطار المهني: المجالات ← المعايير ← المعايير الفرعية ─────
+// المرجع الرسمي: المعايير والمسارات المهنية للمعلمين في المملكة
+// العربية السعودية — هيئة تقويم التعليم والتدريب (1439هـ، ISBN
+// 978-603-90852-1-8): 3 مجالات، 10 معايير، 39 معيارًا فرعيًا.
+// العناصر الرسمية (isOfficial=true) عالمية ومحمية النص؛ والمخصصة
+// على مستوى المدرسة (scope=SCHOOL + schoolId).
+model Domain {
+  id           String    @id @default(cuid())
+  name         String
+  description  String?
+  isOfficial   Boolean   @default(false)
+  officialCode String?   @unique // D1..D3 للرسمي — null للمخصص
+  sortOrder    Int       @default(0)
+  scope        String    @default("GLOBAL") // GLOBAL | SCHOOL
+  schoolId     String? // المخصص: مدرسة المنشئ — لا يظهر لمدارس أخرى
+  archivedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  criteria     Criterion[]
+  achievements Achievement[]
+
+  @@index([isOfficial, sortOrder])
+  @@index([scope, schoolId])
+}
+
+model Criterion {
+  id           String    @id @default(cuid())
+  domainId     String
+  name         String
+  description  String?
+  isOfficial   Boolean   @default(false)
+  officialCode String?   @unique // C1..C10 للرسمي — null للمخصص
+  sortOrder    Int       @default(0)
+  // نطاق المدرسة للمعيار المخصص (حتى داخل مجال رسمي — القسم 32):
+  // رسمي = null؛ مخصص = مدرسة المنشئ ولا يظهر لمدارس أخرى
+  schoolId     String?
+  archivedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  domain        Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  subCriteria   SubCriterion[]
+  achievements  Achievement[]
+
+  @@index([domainId, sortOrder])
+  @@index([isOfficial])
+  @@index([schoolId])
+}
+
+model SubCriterion {
+  id           String    @id @default(cuid())
+  criterionId  String
+  name         String
+  description  String?
+  isOfficial   Boolean   @default(false)
+  officialCode String?   @unique // S1.1..S10.5 — الترقيم الرسمي (معيار.فرعي)
+  sortOrder    Int       @default(0)
+  // نطاق المدرسة للفرعي المخصص (حتى داخل معيار رسمي — القسم 25+32)
+  schoolId     String?
+  archivedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  criterion    Criterion    @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  achievements Achievement[]
+
+  @@index([criterionId, sortOrder])
+  @@index([isOfficial])
+  @@index([schoolId])
+}
+
 // ─── الإنجاز / الشاهد المهني (الوحدة الأساسية) ────────────────
 model Achievement {
   id            String    @id @default(cuid())
   type          String // PRACTICE | REMEDIAL | ENRICHMENT | PD | INITIATIVE | AWARD | PARTICIPATION | CERTIFICATE | ACTIVITY | ASSESSMENT | PLAN | COOP | OTHER
   title         String
-  field         String? // المجال
+  field         String? // التصنيف القديم — يُحفظ مؤقتًا كـ legacyCategory حتى اكتمال الترحيل
   date          DateTime?
   description   String? // وصف مختصر
   goalText      String? // الهدف من الإنجاز
@@ -120,6 +243,17 @@ model Achievement {
   status        String    @default("DRAFT") // DRAFT | COMPLETED | NEEDS_WORK | APPROVED
   goalId        String?
   goal          Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  // ─── التصنيف داخل الإطار المهني (مجال ← معيار ← معيار فرعي) ───
+  // كلها اختيارية: الإنجازات القديمة غير المصنفة تظهر «يحتاج تصنيفًا»
+  // حتى يحدد المستخدم معيارها — لا تخمين ولا فقد بيانات (SetNull عند حذف العنصر المخصص).
+  domainId       String?
+  criterionId    String?
+  subCriterionId String?
+  domain        Domain?       @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  criterion     Criterion?    @relation(fields: [criterionId], references: [id], onDelete: SetNull)
+  subCriterion  SubCriterion? @relation(fields: [subCriterionId], references: [id], onDelete: SetNull)
+
   userId        String
   yearId        String
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -146,6 +280,9 @@ model Attachment {
   keywords  String?
   // مسار الملف على القرص للملفات المرفوعة (خارج public — يُقدَّم عبر /api/files بتحقق صلاحيات)
   storagePath String?
+  // حجم عرض هذه الصورة داخل التقرير — COMPACT (مصغّر، افتراضي) أو ORIGINAL (أصلي).
+  // يغيّر طريقة العرض في التقرير فقط: لا يمس الملف الأصلي ولا دقته ولا أبعاده.
+  reportDisplaySize String? @default("COMPACT")
   createdAt DateTime @default(now())
   userId    String
   yearId    String

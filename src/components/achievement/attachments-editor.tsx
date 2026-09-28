@@ -214,7 +214,7 @@ function LibraryPicker({ open, onOpenChange, onPick }: { open: boolean; onOpenCh
   )
 }
 
-/** محرر الشواهد — رفع + مكتبة + روابط */
+/** محرر الشواهد — رفع + مكتبة + روابط + حجم عرض كل صورة في التقرير */
 export function AttachmentsEditor({
   attachments,
   onChange,
@@ -229,9 +229,41 @@ export function AttachmentsEditor({
   const [errors, setErrors] = useState<string[]>([])
   const [linkOpen, setLinkOpen] = useState(false)
   const [libOpen, setLibOpen] = useState(false)
+  /** الشاهد الجاري حفظ حجم عرضه في التقرير (زر واحد نشط في اللحظة) */
+  const [sizeBusyId, setSizeBusyId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const qc = useQueryClient()
   const setFormOpen = useApp((s) => s.closeForm)
+
+  /** تغيير حجم عرض صورة داخل التقرير — PATCH مستهدف لا يمس الملف الأصلي إطلاقًا.
+   *  يُحدّث الكائن محليًا ويُبطل كاش التقارير حتى تعكس المعاينة/الطباعة/PDF القيمة فورًا. */
+  const changeReportSize = async (id: string, size: 'COMPACT' | 'ORIGINAL') => {
+    const current = attachments.find((a) => a.id === id)
+    if (!current || (current.reportDisplaySize ?? 'COMPACT') === size) return
+    setSizeBusyId(id)
+    // تحديث متفائل محلي
+    onChange(attachments.map((a) => (a.id === id ? { ...a, reportDisplaySize: size } : a)))
+    try {
+      const res = await fetch(`/api/attachments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportDisplaySize: size }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.attachment) throw new Error(data?.error ?? 'تعذر الحفظ')
+      const saved = data.attachment as TAttachment
+      onChange(attachments.map((a) => (a.id === id ? { ...a, reportDisplaySize: saved.reportDisplaySize ?? 'COMPACT' } : a)))
+      await qc.invalidateQueries({ queryKey: ['report'] })
+      await qc.invalidateQueries({ queryKey: ['attachments'] })
+      toast.success(size === 'COMPACT' ? 'سيظهر الشاهد مصغّرًا في التقرير' : 'سيظهر الشاهد بأكبر حجم آمن في التقرير')
+    } catch (e) {
+      // فشل الحفظ — إرجاع القيمة السابقة محليًا والرسالة عربية، لا يُغلق النموذج
+      onChange(attachments.map((a) => (a.id === id ? { ...a, reportDisplaySize: current.reportDisplaySize ?? 'COMPACT' } : a)))
+      toast.error(e instanceof Error ? e.message : 'تعذر حفظ حجم العرض — حاول مرة أخرى')
+    } finally {
+      setSizeBusyId(null)
+    }
+  }
 
   const uploadFiles = async (files: FileList | File[]) => {
     const list = Array.from(files)
@@ -351,6 +383,8 @@ export function AttachmentsEditor({
               key={a.id}
               attachment={a}
               onRemove={() => onChange(attachments.filter((x) => x.id !== a.id))}
+              onReportSizeChange={(size) => changeReportSize(a.id, size)}
+              sizeBusy={sizeBusyId === a.id}
             />
           ))}
         </div>

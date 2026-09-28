@@ -6,6 +6,11 @@ import { ATTACHMENT_KINDS } from '@/lib/constants'
 import { formatSize } from '@/lib/format'
 import type { TAttachment } from '@/lib/types'
 
+/** هل الصورة بوضع «أصلي» في التقرير؟ (COMPACT هو الافتراضي للأرث والقيم غير المضبوطة) */
+export function isOriginalSize(a: TAttachment): boolean {
+  return (a.reportDisplaySize ?? 'COMPACT').toUpperCase() === 'ORIGINAL'
+}
+
 /** مصغّر شاهد: معاينة للصور، وأيقونة لبقية الأنواع */
 export function AttachmentThumb({
   attachment,
@@ -55,50 +60,95 @@ export function AttachmentCard({
   attachment,
   onRemove,
   compact = false,
+  onReportSizeChange,
+  sizeBusy = false,
 }: {
   attachment: TAttachment
   onRemove?: () => void
   compact?: boolean
+  /** تغيير حجم عرض هذه الصورة داخل التقرير (COMPACT/ORIGINAL) — صور فقط */
+  onReportSizeChange?: (size: 'COMPACT' | 'ORIGINAL') => void
+  /** جارٍ حفظ حجم العرض لهذا الشاهد */
+  sizeBusy?: boolean
 }) {
+  const isImage = attachment.kind === 'IMAGE'
+  const isOriginal = isOriginalSize(attachment)
   return (
-    <div className={`group flex items-center gap-3 rounded-xl border border-border bg-card ${compact ? 'p-2.5' : 'p-3'} transition-shadow hover:shadow-soft`}>
-      <AttachmentThumb attachment={attachment} className={compact ? 'size-10' : 'size-12'} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{attachment.title}</p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {ATTACHMENT_KINDS[attachment.kind]?.label ?? 'ملف'}
-          {attachment.fileSize ? ` • ${formatSize(attachment.fileSize)}` : ''}
-        </p>
+    <div className={`group rounded-xl border border-border bg-card ${compact ? 'p-2.5' : 'p-3'} transition-shadow hover:shadow-soft`}>
+      <div className="flex items-center gap-3">
+        <AttachmentThumb attachment={attachment} className={compact ? 'size-10' : 'size-12'} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{attachment.title}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {ATTACHMENT_KINDS[attachment.kind]?.label ?? 'ملف'}
+            {attachment.fileSize ? ` • ${formatSize(attachment.fileSize)}` : ''}
+          </p>
+        </div>
+        {attachment.kind === 'LINK' && attachment.url ? (
+          <a
+            href={attachment.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+            aria-label="فتح الرابط"
+          >
+            <Icon name="ExternalLink" className="size-4" />
+          </a>
+        ) : attachment.url ? (
+          <a
+            href={attachment.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+            aria-label="معاينة الملف"
+          >
+            <Icon name="Eye" className="size-4" />
+          </a>
+        ) : null}
+        {onRemove && (
+          <button
+            onClick={onRemove}
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            aria-label={`إزالة ${attachment.title}`}
+          >
+            <Icon name="X" className="size-4" />
+          </button>
+        )}
       </div>
-      {attachment.kind === 'LINK' && attachment.url ? (
-        <a
-          href={attachment.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-          aria-label="فتح الرابط"
-        >
-          <Icon name="ExternalLink" className="size-4" />
-        </a>
-      ) : attachment.url ? (
-        <a
-          href={attachment.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-          aria-label="معاينة الملف"
-        >
-          <Icon name="Eye" className="size-4" />
-        </a>
-      ) : null}
-      {onRemove && (
-        <button
-          onClick={onRemove}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`إزالة ${attachment.title}`}
-        >
-          <Icon name="X" className="size-4" />
-        </button>
+      {/* الحجم في التقرير — تحكم مستقل لكل صورة شاهد/تنفيذ (عرض فقط، لا يمس الملف الأصلي) */}
+      {isImage && onReportSizeChange && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Icon name={sizeBusy ? 'Loader2' : 'Image'} className={`size-3.5 ${sizeBusy ? 'animate-spin' : ''}`} />
+            الحجم في التقرير
+          </span>
+          <div className="flex items-center gap-1" role="radiogroup" aria-label={`حجم ${attachment.title} في التقرير`}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!isOriginal}
+              disabled={sizeBusy}
+              onClick={() => onReportSizeChange('COMPACT')}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
+                !isOriginal ? 'border-primary bg-secondary text-secondary-foreground' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              مصغّر
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={isOriginal}
+              disabled={sizeBusy}
+              onClick={() => onReportSizeChange('ORIGINAL')}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
+                isOriginal ? 'border-primary bg-secondary text-secondary-foreground' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              أصلي
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

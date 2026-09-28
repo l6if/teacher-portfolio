@@ -44,6 +44,8 @@ export interface TAttachment {
   mimeType?: string | null
   url?: string | null
   keywords?: string | null
+  /** حجم عرض الصورة في التقرير — COMPACT (مصغّر، افتراضي) / ORIGINAL (أصلي) — عرض فقط */
+  reportDisplaySize?: string | null
   createdAt: string
   links?: { id: string; achievementId?: string | null; goalId?: string | null; goal?: { id: string; title: string } | null }[]
   achievementTitles?: { id: string; title: string; type: string }[]

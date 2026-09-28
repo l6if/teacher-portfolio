@@ -279,6 +279,9 @@ model Attachment {
   keywords  String?
   // مسار الملف على القرص للملفات المرفوعة (خارج public — يُقدَّم عبر /api/files بتحقق صلاحيات)
   storagePath String?
+  // حجم عرض هذه الصورة داخل التقرير — COMPACT (مصغّر، افتراضي) أو ORIGINAL (أصلي).
+  // يغيّر طريقة العرض في التقرير فقط: لا يمس الملف الأصلي ولا دقته ولا أبعاده.
+  reportDisplaySize String? @default("COMPACT")
   createdAt DateTime @default(now())
   userId    String
   yearId    String

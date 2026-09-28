@@ -18,6 +18,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   for (const f of ['title', 'keywords', 'url']) {
     if (f in body) data[f] = body[f] === '' ? null : body[f]
   }
+  // حجم عرض الصورة داخل التقرير — COMPACT أو ORIGINAL فقط (عرض فقط، لا يمس الملف)
+  if ('reportDisplaySize' in body) {
+    const size = String(body.reportDisplaySize ?? '').toUpperCase()
+    if (size !== 'COMPACT' && size !== 'ORIGINAL') {
+      return NextResponse.json({ error: 'قيمة حجم العرض غير صالحة' }, { status: 400 })
+    }
+    data.reportDisplaySize = size
+  }
   // روابط الشواهد تُفتح في نافذة جديدة — نمنع أي مخطط غير http/https
   if (data.url && !/^https?:\/\//.test(String(data.url))) {
     return NextResponse.json({ error: 'الرابط يجب أن يبدأ بـ http أو https' }, { status: 400 })
