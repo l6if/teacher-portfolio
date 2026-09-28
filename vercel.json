@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "prisma generate && prisma migrate deploy && node scripts/prod-remove-qa-shells.mjs; next build",
+  "buildCommand": "prisma generate && prisma migrate deploy && next build",
   "functions": {
     "src/app/api/files/[id]/route.ts": {
       "maxDuration": 60
