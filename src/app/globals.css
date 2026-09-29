@@ -249,13 +249,22 @@
 }
 
 /* ═══ طباعة التقارير — A4 تحريري احترافي ═════════════════════════ */
-#print-root { display: none; }
+/* مخفي خارج الشاشة لكن بلا display:none — المحرك يقيس ارتفاع التدفق داخل
+   طبقة القياس (scrollHeight/صور/خطوط تحتاج layout حيًا، وdisplay:none يقتله) */
+#print-root {
+  position: fixed;
+  top: 0;
+  left: -20000px;
+  width: 210mm;
+  visibility: hidden;
+  pointer-events: none;
+}
 
 /* ═══ معاينة التقرير — صفحات A4 حقيقية قبل التنزيل ═════════════ */
 /* pointer-events:auto ضرورية: Radix يضبط body بـ pointer-events:none عند فتح
    أي Sheet/Dialog — والمعاينة تُفتح فوق نموذج الإنجاز المفتوح، فبدونها
    يصبح شريط المعاينة كله (زر رجوع للتعديل/طباعة/PDF) غير قابل للنقر */
-#report-preview-overlay { background: #E9EBEC; pointer-events: auto; }
+#report-preview-overlay { background: #E7E4DA; pointer-events: auto; }
 
 .rp-toolbar {
   display: flex;
@@ -266,7 +275,7 @@
   gap: 0.5rem 0.75rem;
   padding: 0.625rem 1rem;
   padding-top: calc(0.625rem + env(safe-area-inset-top, 0px));
-  background: #14231F;
+  background: #122620;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
@@ -315,36 +324,22 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.rp-card {
+/* ═══ صفحة A4 الصريحة — الوحدة البصرية الموحدة للمعاينة والطباعة ═══
+   الخلفية العاجية والنمط الهندسي مضبوطان inline من PageShell (JS tokens)
+   حتى يبقيا متطابقين حرفيًا بين المعاينة والطباعة وPDF. */
+.rp-page {
   position: relative;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08), 0 12px 32px -8px rgba(16, 24, 40, 0.18);
-  border-radius: 2px;
+  direction: rtl;
   overflow: hidden;
 }
 
-.rp-window { position: relative; overflow: hidden; }
-
-/* التذييل داخل بطاقة المعاينة — بروح الطباعة الثابت أسفل كل صفحة */
-.rp-card-footer {
-  position: absolute;
-  bottom: 12mm;
-  right: 15mm;
-  left: 15mm;
-}
-.rp-card-footer .print-footer {
-  position: static;
-  display: flex;
-  justify-content: space-between;
-  font-size: 8.5px;
-  color: #66786F;
-  letter-spacing: 0.03em;
-  border-top: 0.6px solid #D9E3DF;
-  padding-top: 2mm;
+/* ظل خفيف جدًا في المعاينة فقط — الطباعة/PDF نظيفة وحادة */
+.rp-page-preview {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.1), 0 14px 36px -10px rgba(16, 24, 40, 0.22);
+  border-radius: 2px;
 }
 
-/* نسخة التذييل داخل مجرى المحتوى تُخفى — تظهر نسخة البطاقة بدلها */
-.rp-window .print-footer { display: none !important; }
+.rp-window { position: absolute; overflow: hidden; }
 
 /* صفحة غير محمّلة بعد (تحميل كسول) */
 .rp-placeholder {
@@ -352,12 +347,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #FBFCFC;
+  background: #F7F4EC;
 }
 .rp-placeholder span {
-  font-size: 15px;
-  font-weight: 700;
-  color: #B4C6C0;
+  font-size: 22px;
+  font-weight: 300;
+  color: #C2BA9F;
   font-variant-numeric: tabular-nums;
 }
 
@@ -371,7 +366,7 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.375rem 0.75rem;
-  background: rgba(20, 35, 31, 0.92);
+  background: rgba(18, 38, 32, 0.92);
   backdrop-filter: blur(8px);
   border-radius: 999px;
   box-shadow: 0 8px 24px -6px rgba(16, 24, 40, 0.35);
@@ -386,7 +381,6 @@
   visibility: hidden;
   pointer-events: none;
 }
-.rp-measure .print-footer { display: none !important; }
 
 @media print {
   /* المعاينة تختفي أثناء الطباعة — يتولى #print-root المحتوى نفسه */
@@ -394,27 +388,37 @@
   .rp-measure { display: none !important; }
 }
 
+/* ═══ الطباعة v2 — صفحات A4 صريحة full-bleed ═════════════════
+   كل صفحة rp-page عنصر 210×297mm بهوامشه الداخلية (PageShell)
+   وخلفيته العاجية والنمط الهندسي حتى حواف الورقة — القصّ معدوم:
+   لا حدود مقصوصة ولا تذييل خارج الصفحة ولا ترويسات متصفح.
+   @page بهامش صفري: الصفحة المادية تطابق rp-page واحدًا لواحد،
+   فتطابق الصفحات المطبوعة المعاينةَ صفحةً بصفحة حرفيًا. */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 18mm 15mm 24mm 15mm;
+    margin: 0;
   }
   html, body {
     background: #ffffff !important;
     margin: 0 !important;
+    padding: 0 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   #app-shell { display: none !important; }
-  #print-root { display: block !important; }
+  #print-root {
+    position: static !important;
+    left: auto !important;
+    width: auto !important;
+    visibility: visible !important;
+    display: block !important;
+  }
   #print-root * { visibility: visible; }
 
   /* عزل مستند الطباعة — القاعدة الحاسمة:
      عند تفعيل pf-printing (يضبطها ReportPrint قبل window.print مباشرة)
-     يختفي كل أبناء body عدا #print-root: التطبيق، بوابة نموذج الإنجاز
-     (Radix Portal — إصدار react-portal الحالي لا يضبط data-radix-portal
-     فلم تعد قاعدة [data-radix-portal] تطابقها)، المعاينة، الإشعارات،
-     وأي نافذة منبثقة. لا يُطبع إلا مستند التقرير نفسه. */
+     يختفي كل أبناء body عدا #print-root — لا يُطبع إلا مستند التقرير نفسه. */
   body.pf-printing > *:not(#print-root) { display: none !important; }
 
   /* إخفاء النوافذ المنبثقة والإشعارات عند الطباعة (دفاع إضافي) */
@@ -423,50 +427,53 @@
   /* منع الأسطر اليتيمة والأرامل في النصوص الطويلة */
   p, li { orphans: 3; widows: 3; }
 
-  .print-page {
+  /* كل صفحة صريحة = ورقة فعلية واحدة — التقسيم قائم مسبقًا من المحرك
+     (طبقة القياس): نافذة كل صفحة مقصوصة على قياس A4 نفسه */
+  .rp-page {
     page-break-after: always;
     break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
-  .print-page:last-child {
+  .rp-page:last-child {
     page-break-after: auto;
     break-after: auto;
+  }
+  .rp-pages { display: block !important; }
+  .rp-pages > [data-rp-wrapper] { display: block !important; }
+  .rp-preview-chip { display: none !important; }
+  .rp-placeholder { display: none !important; }
+
+  /* قواطع التدفق الداخلية تُلغى كليًا في الطباعة:
+     محرك التقسيم قسّم الصفحات مسبقًا (نوافذ مقيسة داخل .rp-page)،
+     وأي قاطع قسري داخلي يولّد صفحة فارغة زائدة في PDF.
+     تبقى قواطع .rp-page نفسها حصرًا (أعلاه). */
+  .rp-page .print-page,
+  .rp-page .print-report-start,
+  .rp-page .print-section-cover {
+    page-break-after: auto !important;
+    break-after: auto !important;
+    page-break-before: auto !important;
+    break-before: auto !important;
   }
   .print-avoid-break {
     page-break-inside: avoid;
     break-inside: avoid;
   }
+  .print-page {
+    page-break-after: auto;
+    break-after: auto;
+  }
   .print-section-cover {
-    page-break-before: always;
-    break-before: page;
     page-break-inside: avoid;
   }
-  /* بداية تقرير مستقل جديد داخل قائمة — صفحة جديدة كاملة،
-     دون break-inside:avoid حتى يتدفق التقرير الطويل عبر صفحات متعددة طبيعيًا */
-  .print-report-start {
-    page-break-before: always;
-    break-before: page;
-  }
-  /* جداول الخطة: يُكرَّر الرأس تلقائيًا عند امتداد الجدول لصفحة ثانية */
   table { page-break-inside: auto; }
   tr, th, td { page-break-inside: avoid; }
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
 
-  .print-footer {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    left: 0;
-    display: flex;
-    justify-content: space-between;
-    font-size: 8.5px;
-    color: #66786F;
-    letter-spacing: 0.03em;
-    border-top: 0.6px solid #D9E3DF;
-    padding-top: 2mm;
-    padding-bottom: 1mm;
-  }
   img { max-width: 100% !important; }
-  /* الصور لا تُقطع بين الصفحات */
   figure { page-break-inside: avoid; }
 }

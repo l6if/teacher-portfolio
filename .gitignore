@@ -86,3 +86,6 @@ agent-ctx/
 .secret-patterns
 supabase/
 qa-state.json
+
+# قاعدة التطوير المضمّرة وبيانات QA المحلية
+.pgdev/

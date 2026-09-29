@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveTargetUser, resolveYear, toSafeUser, sanitizeInternal } from '@/lib/session'
 import { computeCompletion } from '@/lib/progress'
+import { calculateProfessionalCompletion } from '@/lib/framework-completion'
 
 // بيانات التقارير — كل ما تحتاجه واجهة التصدير في استدعاء واحد
+// بما فيها الإطار المهني (المجالات/المعايير/الاكتمال الرسمي) لمحتوى الملخص والمجالات والفهرس.
 export async function GET(req: NextRequest) {
   const { me, target } = await resolveTargetUser(req)
   if (!me) return NextResponse.json({ error: 'غير مسجل الدخول' }, { status: 401 })
@@ -12,7 +14,7 @@ export async function GET(req: NextRequest) {
   const year = await resolveYear(target.id, req.nextUrl.searchParams.get('yearId'))
   if (!year) return NextResponse.json({ error: 'لا توجد سنة دراسية' }, { status: 404 })
 
-  const [goals, achievements, attachments, reflection, devPlans, completion] = await Promise.all([
+  const [goals, achievements, attachments, reflection, devPlans, completion, professional] = await Promise.all([
     db.goal.findMany({
       where: { userId: target.id, yearId: year.id },
       orderBy: { createdAt: 'asc' },
@@ -26,6 +28,10 @@ export async function GET(req: NextRequest) {
       include: {
         links: { include: { attachment: true } },
         goal: { select: { id: true, title: true } },
+        // أسماء التصنيف المهني — لمسار (مجال ← معيار ← معيار فرعي) في وثيقة الإنجاز
+        domain: { select: { id: true, name: true, isOfficial: true } },
+        criterion: { select: { id: true, name: true, isOfficial: true } },
+        subCriterion: { select: { id: true, name: true, isOfficial: true, officialCode: true } },
       },
     }),
     db.attachment.findMany({
@@ -43,6 +49,7 @@ export async function GET(req: NextRequest) {
     db.reflection.findFirst({ where: { userId: target.id, yearId: year.id, term: 'TERM1' } }),
     db.devPlan.findMany({ where: { userId: target.id, yearId: year.id }, orderBy: { createdAt: 'asc' } }),
     computeCompletion(target.id, year.id),
+    calculateProfessionalCompletion(target.id, target.school ?? null),
   ])
 
   return NextResponse.json(
@@ -55,6 +62,7 @@ export async function GET(req: NextRequest) {
       reflection,
       devPlans,
       completion,
+      professional,
       readonly: target.id !== me.id,
     }),
   )

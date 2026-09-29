@@ -1,20 +1,16 @@
 'use client'
 
 /**
- * معاينة التقرير — مرحلة مستقلة قبل التنزيل
- * ──────────────────────────────────────────────
- * المبدأ: What You Preview Is What You Export — تعرض نفس ReportBody
- * (نفس مكونات PDF الحقيقية) مقسّمة إلى صفحات A4 فعلية:
+ * معاينة التقرير v2 — مرحلة مستقلة قبل الطباعة/التنزيل
+ * ──────────────────────────────────────────────────────────────
+ * تعرض مستند الصفحات الموحد نفسه (ReportDocument — نفس المكونات
+ * التي ستُطبع وتُصدَّر PDF) بتكبير حر وملاءمة عرض وتنقل صفحات.
  *
- * 1) طبقة قياس مخفية بعرض منطقة الطباعة نفسها (180mm) تقيس المحتوى.
- * 2) خوارزمية فواصل تحاكي قواعد الطباعة: فواصل قسرية (print-section-cover /
- *    print-page) + احترام عدم القص (print-avoid-break) + سعة الصفحة (255mm).
- * 3) كل صفحة = ورقة A4 بيضاء بهوامش @page نفسها وظل خفيف، تُظهر نافذتها
- *    الخاصة من المحتوى نفسه — فتتطابق المعاينة مع PDF المطبوع.
+ * المبدأ: PREVIEW = PRINT = PDF — المعاينة ليست نسخة ثانية من
+ * التصميم بل نفس شجرة المحتوى بنفس خوارزمية التقسيم.
  *
- * الجوال: Fit Width + تكبير + تنقل بين الصفحات + مؤشر الصفحة الحالية.
- * «رجوع للتعديل» زر أبيض بارز في أقصى يمين الشريط دائمًا (كل المقاسات) —
- * يغلق طبقة المعاينة فقط، شاشة الإعداد/النموذج تبقى محمّلة بحالتها كاملة.
+ * الجوال: ملاءمة العرض تلقائيًا + تكبير + تنقل بين الصفحات.
+ * «رجوع للتعديل» زر أبيض بارز أقصى اليمين دائمًا بكل المقاسات.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -22,183 +18,11 @@ import { useApp } from '@/store/app-store'
 import { useReport } from '@/hooks/use-data'
 import { Icon } from '@/components/shared/icon'
 import { Button } from '@/components/ui/button'
-import { ReportBody } from './report-print'
-import { ReportImageProvider } from './report-image-context'
-import { PrintFooter } from './report-parts'
-import { RC } from '@/lib/report-tokens'
+import { ReportDocument } from './report-print'
+import { PAGE_W, PAGE_DOM_H } from './report-engine'
 
-/* ثواطت A4 — مطابقة لـ @page في globals.css (18mm 15mm 24mm 15mm) */
+/* ثوابت A4 */
 const MM_PX = 96 / 25.4
-const PAGE_W = 210 * MM_PX // ≈ 793.7px
-const PAGE_H = 297 * MM_PX // ≈ 1122.5px
-const CONTENT_W_MM = 180
-const CONTENT_H_MM = 255
-const CONTENT_H = CONTENT_H_MM * MM_PX // سعة المحتوى في الصفحة الواحدة
-const EPS = 2
-/** حد صفحة الشبح — فراغ أقل من ~12mm بين فاصلين قسريين متجاورين يُطوى */
-const GHOST_PAGE_PX = 48
-
-interface PageInfo {
-  /** موضع بداية نافذة المحتوى لهذه الصفحة (px) */
-  start: number
-  /** ارتفاع المحتوى الظاهر في الصفحة (px، ≤ CONTENT_H) */
-  height: number
-}
-
-/** خوارزمية الفواصل — تحاكي قواعد print CSS الحالية */
-function computePages(container: HTMLElement): PageInfo[] {
-  const totalH = container.scrollHeight
-  if (totalH <= 0) return [{ start: 0, height: CONTENT_H }]
-
-  const cRect = container.getBoundingClientRect()
-  const spanOf = (el: Element) => {
-    const r = el.getBoundingClientRect()
-    return { top: r.top - cRect.top, bottom: r.bottom - cRect.top }
-  }
-
-  // عناصر نصية — لتمييز صفحة الشبح (فراغ بين فاصلين قسريين) عن فائض محتوى حقيقي
-  const textEls: { top: number; bottom: number }[] = []
-  container.querySelectorAll('p, h1, h2, h3, h4, li, td, span').forEach((el) => {
-    if (!el.textContent?.trim()) return
-    const s = spanOf(el)
-    if (s.bottom > EPS && s.top < totalH - EPS) textEls.push(s)
-  })
-
-  // فواصل قسرية: بداية صفحة إلزامية — فاصل قسم أو بداية تقرير مستقل جديد
-  const forced: number[] = []
-  container.querySelectorAll('.print-section-cover, .print-report-start').forEach((el) => {
-    const { top } = spanOf(el)
-    if (top > EPS && top < totalH - EPS) forced.push(top)
-  })
-  // نهاية print-page تفرض صفحة تالية فقط إن وُجد نص فعلي بعدها —
-  // محاكاة قاعدة :last-child في CSS الطباعة التي تلغي فاصل آخر عنصر
-  container.querySelectorAll('.print-page').forEach((el) => {
-    const { bottom } = spanOf(el)
-    if (bottom > EPS && bottom < totalH - EPS && textEls.some((t) => t.top > bottom + EPS)) forced.push(bottom)
-  })
-  forced.sort((a, b) => a - b)
-
-  // كتل يمنع قصّها بين صفحتين — print-avoid-break + صفوف الجداول والأشكال
-  // (قواعد الطباعة الفعلية: tr/th/td/figure لديها page-break-inside: avoid)
-  const atomics: { top: number; bottom: number }[] = []
-  const atomicSelector = '.print-avoid-break, tr, figure'
-  container.querySelectorAll(atomicSelector).forEach((el) => {
-    const s = spanOf(el)
-    if (s.bottom - s.top > EPS && s.bottom > EPS && s.top < totalH - EPS) atomics.push(s)
-  })
-
-  const pages: PageInfo[] = []
-  let start = 0
-  let startWasForced = true // الصفحة الأولى تبدأ عند فاصل ضمني (بداية المستند)
-  let guard = 0
-  while (start < totalH - EPS && guard++ < 400) {
-    const limit = start + CONTENT_H
-
-    // فاصل قسري داخل هذه الصفحة؟ الصفحة تنتهي عنده — ويُفحص حتى قرب نهاية المستند:
-    // بداية تقرير مستقل تفرض صفحة جديدة كاملة حتى لو كان المتبقي بعدها يفي بأقل من صفحة
-    const forcedHit = forced.find((f) => f > start + EPS && f <= Math.min(limit, totalH) - EPS)
-
-    // آخر صفحة: لا فاصل قسري بعدها والمتبقي يتسع في صفحة واحدة
-    if (limit >= totalH - EPS && forcedHit === undefined) {
-      pages.push({ start, height: Math.max(totalH - start, 10) })
-      break
-    }
-
-    let end = limit
-    let endWasForced = false
-
-    if (forcedHit !== undefined) {
-      // فاصل قسري داخل هذه الصفحة — الصفحة تنتهي عنده
-      end = forcedHit
-      endWasForced = true
-    } else {
-      // لا قص لكتلة avoid-break: إن عبرت الكتلة حد الصفحة تبدأ في التالية
-      let moved = true
-      let guarded = 0
-      while (moved && guarded++ < 50) {
-        moved = false
-        for (const b of atomics) {
-          if (b.top < end - EPS && b.bottom > end + EPS && b.top > start + EPS) {
-            end = b.top
-            moved = true
-            break
-          }
-        }
-      }
-    }
-
-    // صفحة فارغة تقريبًا (فاصل قسري متلاصق) → تقدّم البداية قليلًا وتابع
-    if (end <= start + EPS) {
-      start = start + EPS
-      continue
-    }
-
-    // طيّ الفاصلين القسريين المتجاورين: الطباعة تدمجهما (CSS: adjacent forced
-    // breaks collapse) — فلا صفحة للفراغ بينهما ما لم يوجد نص فعلي فيه
-    if (
-      endWasForced && startWasForced && end - start < GHOST_PAGE_PX &&
-      !textEls.some((t) => t.bottom > start + EPS && t.top < end - EPS)
-    ) {
-      start = end
-      startWasForced = true
-      continue
-    }
-
-    pages.push({ start, height: end - start })
-    start = end
-    startWasForced = endWasForced
-  }
-
-  if (!pages.length) pages.push({ start: 0, height: Math.max(totalH, 10) })
-  return pages
-}
-
-/* ─── بطاقة صفحة A4 واحدة ─────────────────────────────────── */
-
-function PageCard({
-  page, index, total, mounted, data, config, user, yearLabel,
-}: {
-  page: PageInfo
-  index: number
-  total: number
-  mounted: boolean
-  data: Parameters<typeof ReportBody>[0]['data']
-  config: Parameters<typeof ReportBody>[0]['config']
-  user: { name: string }
-  yearLabel: string
-}) {
-  return (
-    <div
-      data-rp-page={index}
-      className="rp-card"
-      style={{ width: '210mm', height: '297mm', padding: '18mm 15mm 24mm 15mm' }}
-      aria-label={`صفحة ${index + 1} من ${total}`}
-    >
-      {mounted ? (
-        <>
-          {/* نافذة المحتوى — نفس ReportBody بإزاحة رأسية */}
-          <div className="rp-window" style={{ height: page.height }}>
-            <div style={{ position: 'absolute', top: -page.start, left: 0, right: 0 }}>
-              <ReportImageProvider variant="preview">
-                <ReportBody config={config} data={data} />
-              </ReportImageProvider>
-            </div>
-          </div>
-          {/* التذييل — يتكرر أسفل كل صفحة كما في الطباعة */}
-          <div className="rp-card-footer">
-            <PrintFooter name={user.name} year={yearLabel} />
-          </div>
-        </>
-      ) : (
-        <div className="rp-placeholder">
-          <span>{index + 1}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ═══ شاشة المعاينة الكاملة ═════════════════════════════════ */
 
 export function ReportPreview() {
   const previewConfig = useApp((s) => s.previewConfig)
@@ -206,29 +30,20 @@ export function ReportPreview() {
   const setPrintConfig = useApp((s) => s.setPrintConfig)
   const { data, isLoading } = useReport()
 
-  const [pages, setPages] = useState<PageInfo[] | null>(null)
-  const [measureTick, setMeasureTick] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [visible, setVisible] = useState<Set<number>>(new Set([0]))
   const [current, setCurrent] = useState(0)
-  /** null = ملاءمة العرض (تُحسب عند العرض) — رقم = تكبير صريح */
+  /** null = ملاءمة العرض — رقم = تكبير صريح */
   const [scale, setScale] = useState<number | null>(null)
-  /** إعادة الحساب عند تغيير حجم النافذة في وضع الملاءمة */
   const [resizeTick, setResizeTick] = useState(0)
 
-  const measureRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+  const wrapperRefs = useRef<(HTMLDivElement | null)[]>([])
 
   const open = Boolean(previewConfig)
 
-  /* عزل تمرير المعاينة عن قفل Radix (react-remove-scroll):
-     عند بقاء نموذج الإنجاز مفتوحًا تحت المعاينة، يعلّق react-remove-scroll
-     مستمع wheel/touchmove غير سلبي على مستوى المستند يلغي أي حدث يقع
-     خارج محتوى الورقة — فتَعطَل عجلة الفأرة واللمس داخل المعاينة رغم أن
-     منفذها scrollable. قطع انتشار الحدث عند نافذة الالتقاط (قبل وصوله
-     لمستمع المستند) يعيد التمرير الطبيعي داخل المعاينة حصرًا:
-     الخلفية تبقى مقفلة (body overflow hidden) والمعاينة تتمرر حرة.
-     stopPropagation لا يمس الفعل الافتراضي — التمرير الأصلي يستمر. */
+  /* عزل تمرير المعاينة عن قفل Radix (react-remove-scroll) —
+     stopPropagation عند نافذة الالتقاط يعيد التمرير داخل المعاينة حصرًا */
   useEffect(() => {
     if (!open) return
     const stop = (e: WheelEvent | TouchEvent) => {
@@ -252,7 +67,7 @@ export function ReportPreview() {
     return () => { document.body.style.overflow = prev }
   }, [open])
 
-  /* تغيّر حجم النافذة — يُعيد حساب الملاءمة (أثناء المعاينة فقط) */
+  /* تغيّر حجم النافذة — إعادة حساب الملاءمة */
   useEffect(() => {
     if (!open) return
     const onResize = () => setResizeTick((t) => t + 1)
@@ -260,92 +75,49 @@ export function ReportPreview() {
     return () => window.removeEventListener('resize', onResize)
   }, [open])
 
-  /* القياس: خطوط + صور ثم حساب الصفحات */
+  /* الصفحات المرئية — تحميل كسول ±صفحة (المستند يدير مراقبته بنفسه) */
+  const mountedPredicate = useCallback((i: number) => visible.has(i) || visible.has(i - 1) || visible.has(i + 1), [visible])
+
+  /* مراقبة الصفحات المرئية + الصفحة الحالية — من التمرير نفسه */
   useEffect(() => {
-    if (!open || isLoading || !data || !previewConfig) return
-    let cancelled = false
-
-    const run = async () => {
-      setPages(null)
-      await document.fonts.ready
-      if (cancelled) return
-      // انتظر الصور داخل طبقة القياس
-      const imgs = Array.from(measureRef.current?.querySelectorAll('img') ?? [])
-      await Promise.all(imgs.map((img) =>
-        img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res() }),
-      ))
-      if (cancelled) return
-      await new Promise((r) => requestAnimationFrame(() => r(null)))
-      if (cancelled) return
-      const el = measureRef.current
-      if (el) setPages(computePages(el))
-    }
-
-    run().catch(() => { if (!cancelled) setPages([{ start: 0, height: CONTENT_H }]) })
-    return () => { cancelled = true }
-  }, [open, isLoading, data, previewConfig, measureTick])
-
-  /* الصفحات المرئية (تحميل كسول ±صفحتين) */
-  useEffect(() => {
-    if (!open || !pages) return
+    if (!open) return
     const root = scrollRef.current
     if (!root) return
-    const io = new IntersectionObserver((entries) => {
-      setVisible((prev) => {
-        const next = new Set(prev)
-        for (const e of entries) {
-          const idx = Number((e.target as HTMLElement).dataset.rpPage)
-          if (Number.isInteger(idx)) {
-            if (e.isIntersecting) next.add(idx)
-            else next.delete(idx)
-          }
-        }
-        return next
-      })
-    }, { root, rootMargin: '1600px 0px' })
-
-    root.querySelectorAll('[data-rp-page]').forEach((el) => io.observe(el))
-    return () => io.disconnect()
-  }, [open, pages])
-
-  /* مؤشر الصفحة الحالية */
-  const onPageScroll = useCallback(() => {
-    const root = scrollRef.current
-    if (!root || !pages) return
-    const probe = root.scrollTop + root.clientHeight * 0.45
-    let idx = 0
-    for (let i = 0; i < cardRefs.current.length; i++) {
-      const el = cardRefs.current[i]
-      if (!el) continue
-      if (el.offsetTop <= probe) idx = i
-      else break
-    }
-    setCurrent(idx)
-  }, [pages])
-
-  useEffect(() => {
-    const root = scrollRef.current
-    if (!root || !open) return
     let raf = 0
     const handler = () => {
       cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(onPageScroll)
+      raf = requestAnimationFrame(() => {
+        const wrappers = Array.from(root.querySelectorAll<HTMLElement>('[data-rp-wrapper]'))
+        const probe = root.scrollTop + root.clientHeight * 0.45
+        let idx = 0
+        const next = new Set<number>()
+        wrappers.forEach((el, i) => {
+          const top = el.offsetTop
+          const bottom = top + el.offsetHeight
+          if (bottom > root.scrollTop - 1200 && top < root.scrollTop + root.clientHeight + 1200) next.add(i)
+          if (top <= probe) idx = i
+        })
+        setVisible(next)
+        setCurrent(idx)
+      })
     }
     root.addEventListener('scroll', handler, { passive: true })
+    handler()
     return () => { root.removeEventListener('scroll', handler); cancelAnimationFrame(raf) }
-  }, [open, onPageScroll])
+  }, [open, totalPages])
 
   /* التنقل بين الصفحات */
   const goTo = useCallback((idx: number) => {
     const root = scrollRef.current
-    const el = cardRefs.current[idx]
-    if (!root || !el || !pages) return
-    const clamped = Math.max(0, Math.min(pages.length - 1, idx))
-    root.scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' })
-    setCurrent(clamped)
-  }, [pages])
+    if (!root) return
+    const el = root.querySelector<HTMLElement>(`[data-rp-wrapper="${Math.max(0, Math.min(totalPages - 1, idx))}"]`)
+    if (el) {
+      root.scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' })
+      setCurrent(idx)
+    }
+  }, [totalPages])
 
-  /* التكبير — null يعني ملاءمة العرض (مشتقة أثناء العرض) */
+  /* التكبير — null يعني ملاءمة العرض */
   const fitScale = () => Number(Math.min(1, Math.max(0.3, (Math.min(window.innerWidth, 1400) - 48) / PAGE_W)).toFixed(3))
   const zoom = (dir: 1 | -1) => {
     setScale((prev) => {
@@ -355,16 +127,14 @@ export function ReportPreview() {
   }
   const fitWidth = () => setScale(null)
 
-  // الملاءمة تُشتق عند العرض — resizeTick يفجّر إعادة الحساب عند تغيّر النافذة
-  const s = useMemo(() => scale ?? fitScale(), [scale, resizeTick])
-  const total = pages?.length ?? 0
+  const s = useMemo(() => scale ?? fitScale(), [scale, resizeTick])  
 
   const download = () => {
     if (!previewConfig) return
     setPrintConfig(previewConfig) // نفس الإعداد → نفس المكونات → PDF مطابق
   }
 
-  /** الطباعة المباشرة — نفس مسار PDF: نافذة الطباعة تطبع التقرير وحده (بلا واجهة التطبيق) */
+  /** الطباعة المباشرة — نفس مسار PDF */
   const print = () => {
     if (!previewConfig) return
     setPrintConfig(previewConfig)
@@ -373,21 +143,37 @@ export function ReportPreview() {
   const back = () => setPreviewConfig(null)
 
   const previewTitle = previewConfig?.title
-  const isFit = scale === null
+
+  /** تغليف كل صفحة للتكبير — نفس نمط القياس الأصلي */
+  const pageWrapper = useCallback((index: number, _total: number, page: React.ReactNode) => {
+    return (
+      <div
+        ref={(el) => { wrapperRefs.current[index] = el }}
+        style={{ width: PAGE_W * s, height: PAGE_DOM_H * s, flexShrink: 0, overflow: 'hidden' }}
+        data-rp-zoom={index}
+      >
+        <div style={{ width: PAGE_W, height: PAGE_DOM_H, transform: `scale(${s})`, transformOrigin: 'top right', position: 'relative' }}>
+          {page}
+        </div>
+      </div>
+    )
+  }, [s])
+
+  const onReady = useCallback((info: { pages: number }) => {
+    setTotalPages(info.pages)
+  }, [])
 
   const toolbar = useMemo(() => (
     <div className="rp-toolbar" dir="rtl">
-      {/* flex-auto (basis:auto) لا flex-1 (basis:0): عند الضيق يلتف هذا الصف
-          فعليًا لمصفوفين بدل أن يفيض الزر فوق أدوات التكبير */}
       <div className="flex min-w-0 flex-auto items-center gap-2.5">
-        {/* رجوع للتعديل — زر أبيض بارز أقصى اليمين، ظاهر دائمًا بكل المقاسات */}
+        {/* رجوع للتعديل — زر أبيض بارز أقصى اليمين */}
         <button type="button" onClick={back} className="rp-back-btn" aria-label="رجوع للتعديل">
           <Icon name="ArrowRight" className="size-4.5" strokeWidth={2.2} />
           <span>رجوع للتعديل</span>
         </button>
         <div className="min-w-0 border-r border-white/15 pr-2.5 sm:pr-4">
           <h2 className="truncate text-sm font-bold text-white sm:text-base">معاينة التقرير</h2>
-          <p className="hidden truncate text-[11px] text-white/60 sm:block">راجع التقرير قبل اعتماده أو تنزيله — {previewConfig?.title ?? ''}</p>
+          <p className="hidden truncate text-[11px] text-white/60 sm:block">راجع التقرير قبل اعتماده أو تنزيله — {previewTitle ?? ''}</p>
         </div>
       </div>
 
@@ -404,7 +190,11 @@ export function ReportPreview() {
             <Icon name="ZoomIn" className="size-4" />
           </button>
         </div>
-        {/* طباعة — تطبع التقرير وحده عبر #print-root */}
+        {/* عدد الصفحات + الكثافة الفعلية للمستند الحالي */}
+        <div className="hidden items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white/80 sm:flex" aria-live="polite">
+          <span className="tabular-nums">{totalPages}</span>
+          <span className="text-white/50">صفحة A4</span>
+        </div>
         <Button onClick={print} className="min-h-10 gap-2 rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-bold text-white hover:bg-white/20 sm:px-4">
           <Icon name="Printer" className="size-4" />
           <span className="hidden sm:inline">طباعة</span>
@@ -416,13 +206,11 @@ export function ReportPreview() {
         </Button>
       </div>
     </div>
-  ), [s, isFit, previewTitle, back, download, print])
+  ), [s, scale, previewTitle, totalPages, back, download, print])  
 
   if (!open || !previewConfig) return null
 
   if (isLoading) {
-    // z-[70]: فوق ورقة النموذج (z-50) — المعاينة من داخل النموذج تغطيه بالكامل،
-    // وتحت نوافذ المساعد الذكي والإشعارات (z-100)
     return (
       <div id="report-preview-overlay" className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-200" dir="rtl">
         <div className="text-center">
@@ -437,68 +225,36 @@ export function ReportPreview() {
     <div id="report-preview-overlay" className="fixed inset-0 z-[70] flex flex-col bg-neutral-200/95 backdrop-blur-sm" dir="rtl">
       {toolbar}
 
-      {/* منطقة الصفحات */}
+      {/* منطقة الصفحات — المستند الموحد نفسه */}
       <div ref={scrollRef} className="rp-scroll flex-1 overflow-auto">
-        {pages === null ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-emerald-700 border-t-transparent" />
-              <p className="text-sm text-neutral-600">جارٍ تهيئة المعاينة بدقة الطباعة…</p>
-            </div>
+        {data ? (
+          <div style={{ width: PAGE_W * s, margin: '0 auto', padding: '24px 0 96px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
+            <ReportDocument
+              config={previewConfig}
+              data={data}
+              variant="preview"
+              pageWrapper={pageWrapper}
+              mountedPredicate={mountedPredicate}
+              onReady={onReady}
+            />
           </div>
-        ) : (
-          <div style={{ width: PAGE_W * s, margin: '0 auto', padding: '24px 0 96px', display: 'flex', flexDirection: 'column', gap: 28 }}>
-            {pages.map((p, i) => (
-              <div
-                key={i}
-                ref={(el) => { cardRefs.current[i] = el }}
-                style={{ width: PAGE_W * s, height: PAGE_H * s, flexShrink: 0 }}
-                data-rp-wrapper={i}
-              >
-                <div style={{ width: PAGE_W, height: PAGE_H, transform: `scale(${s})`, transformOrigin: 'top right', position: 'relative' }}>
-                  <PageCard
-                    page={p}
-                    index={i}
-                    total={total}
-                    mounted={visible.has(i) || visible.has(i - 1) || visible.has(i + 1)}
-                    data={data!}
-                    config={previewConfig}
-                    user={{ name: data!.user.name }}
-                    yearLabel={data!.year.label}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* شريط التنقل السفلي — مؤشر الصفحة الحالية */}
-      {pages && total > 0 && (
+      {totalPages > 0 && (
         <div className="rp-nav" dir="rtl">
           <button onClick={() => goTo(current - 1)} disabled={current === 0} className="flex size-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 disabled:opacity-30" aria-label="الصفحة السابقة">
             <Icon name="ChevronRight" className="size-5" />
           </button>
           <span className="min-w-16 text-center text-sm font-bold tabular-nums text-white" aria-live="polite">
-            {current + 1} / {total}
+            {current + 1} / {totalPages}
           </span>
-          <button onClick={() => goTo(current + 1)} disabled={current === total - 1} className="flex size-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 disabled:opacity-30" aria-label="الصفحة التالية">
+          <button onClick={() => goTo(current + 1)} disabled={current === totalPages - 1} className="flex size-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 disabled:opacity-30" aria-label="الصفحة التالية">
             <Icon name="ChevronLeft" className="size-5" />
           </button>
         </div>
       )}
-
-      {/* طبقة القياس المخفية — نفس مكونات التقرير بعرض منطقة الطباعة */}
-      <div
-        ref={measureRef}
-        aria-hidden="true"
-        className="rp-measure"
-        style={{ width: `${CONTENT_W_MM}mm` }}
-      >
-        <ReportImageProvider variant="preview">
-          <ReportBody config={previewConfig} data={data!} />
-        </ReportImageProvider>
-      </div>
     </div>
   )
 }

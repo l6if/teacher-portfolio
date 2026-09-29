@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApp } from '@/store/app-store'
-import type { DashboardData, TAchievement, TGoal, TAttachment, TReflection, TDevPlan, TYear, TUser, FrameworkData } from '@/lib/types'
+import type { DashboardData, TAchievement, TGoal, TAttachment, TReflection, TDevPlan, TYear, TUser, FrameworkData, TDomainNode } from '@/lib/types'
 
 async function j<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -135,6 +135,13 @@ export interface ReportData {
   reflection: TReflection | null
   devPlans: TDevPlan[]
   completion: { overall: number; sections: Record<string, number>; counts: ReportCounts }
+  /** الإطار المهني الرسمي — شجرة المجالات والمعايير والاكتمال 3/10/39 */
+  professional?: {
+    domains: TDomainNode[]
+    official: { completed: number; total: number; percent: number }
+    custom: { completed: number; total: number; percent: number } | null
+    unmappedCount: number
+  }
   readonly?: boolean
 }
 
