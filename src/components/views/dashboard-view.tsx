@@ -49,7 +49,7 @@ export function DashboardView() {
 
   return (
     <div className="space-y-6">
-      <div className="anim-fade-up relative overflow-hidden rounded-[2rem] bg-[linear-gradient(120deg,oklch(0.23_0.07_275),oklch(0.38_0.18_292),oklch(0.55_0.18_330))] px-5 py-6 text-white shadow-lift sm:px-8 sm:py-8">
+      <div className="anim-fade-up relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(120deg,oklch(0.18_0.045_235),oklch(0.27_0.09_215),oklch(0.38_0.14_180))] px-5 py-7 text-white shadow-lift sm:px-8 sm:py-9">
         <div className="pointer-events-none absolute -left-10 -top-16 size-52 rounded-full bg-white/10 blur-3xl" />
         <div className="relative max-w-xl">
           <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-white/65">مساحتك المهنية</p>

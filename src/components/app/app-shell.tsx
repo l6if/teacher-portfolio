@@ -96,8 +96,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       {/* الشريط الجانبي — يسار الشاشة في RTL */}
-      <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col border-l border-sidebar-border bg-sidebar lg:flex">
-        <div className="flex items-center gap-3 px-5 pb-5 pt-6">
+      <aside className="sticky top-0 hidden h-screen w-[276px] shrink-0 flex-col border-l border-sidebar-border bg-sidebar lg:flex">
+        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 pb-6 pt-7">
           <div className="flex size-10 items-center justify-center rounded-2xl bg-primary shadow-soft">
             <Icon name="GraduationCap" className="size-5.5 text-primary-foreground" strokeWidth={1.8} />
           </div>
