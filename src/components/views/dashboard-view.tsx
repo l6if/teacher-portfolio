@@ -51,7 +51,11 @@ export function DashboardView() {
     <div className="space-y-5">
       {/* ١ — التحية */}
       <div className="anim-fade-up">
-        <h1 className="text-[22px] font-bold tracking-tight text-foreground sm:text-[1.7rem]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-primary">
+          <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+          <span>ملف الإنجاز المهني</span>
+        </div>
+        <h1 className="text-[24px] font-bold tracking-tight text-foreground sm:text-[1.85rem]">
           {greeting()}، {user.role === 'MANAGER' ? '' : `${getGenderedLabels(user.gender).honorific} `}{firstName(user.name)}
         </h1>
         <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
