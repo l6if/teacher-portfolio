@@ -48,7 +48,16 @@ export function DashboardView() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      <div className="anim-fade-up relative overflow-hidden rounded-[2rem] bg-[linear-gradient(120deg,oklch(0.23_0.07_275),oklch(0.38_0.18_292),oklch(0.55_0.18_330))] px-5 py-6 text-white shadow-lift sm:px-8 sm:py-8">
+        <div className="pointer-events-none absolute -left-10 -top-16 size-52 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative max-w-xl">
+          <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-white/65">مساحتك المهنية</p>
+          <h2 className="text-2xl font-bold leading-tight sm:text-3xl">كل إنجاز يترك أثرًا.</h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-white/75">وثّق رحلتك، راقب نموك، واصنع ملفًا يعبّر عن أفضل ما تقدمه.</p>
+        </div>
+        <div className="absolute bottom-5 left-5 hidden size-16 rounded-2xl border border-white/20 bg-white/10 sm:block" aria-hidden="true" />
+      </div>
       {/* ١ — التحية */}
       <div className="anim-fade-up">
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-primary">

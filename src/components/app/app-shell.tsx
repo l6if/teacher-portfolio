@@ -81,8 +81,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <button
         onClick={() => navigate(item.view)}
-        className={`group relative flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-          active ? 'bg-secondary font-semibold text-secondary-foreground' : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+        className={`group relative flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-sm transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+          active ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-soft' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground'
         }`}
         aria-current={active ? 'page' : undefined}
       >
