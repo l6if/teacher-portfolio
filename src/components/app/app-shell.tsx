@@ -96,7 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       {/* الشريط الجانبي — يسار الشاشة في RTL */}
-      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-l border-sidebar-border bg-sidebar lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col border-l border-sidebar-border bg-sidebar lg:flex">
         <div className="flex items-center gap-3 px-5 pb-5 pt-6">
           <div className="flex size-10 items-center justify-center rounded-2xl bg-primary shadow-soft">
             <Icon name="GraduationCap" className="size-5.5 text-primary-foreground" strokeWidth={1.8} />
@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* الشريط العلوي */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
+        <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
           {readonly && (
             <div className="flex items-center justify-center gap-2 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800">
               <Icon name="Eye" className="size-3.5" />
@@ -194,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1240px] flex-1 px-4 pb-36 pt-5 sm:px-6 sm:pt-6 lg:pb-12">
+        <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 pb-36 pt-6 sm:px-6 sm:pt-8 lg:pb-12 lg:pt-9">
           {children}
         </main>
       </div>
