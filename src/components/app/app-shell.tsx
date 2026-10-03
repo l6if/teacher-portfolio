@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* الشريط الجانبي — يسار الشاشة في RTL */}
       <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col border-l border-sidebar-border bg-sidebar lg:flex">
         <div className="flex items-center gap-3 px-5 pb-5 pt-6">
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-primary shadow-soft">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-primary shadow-soft ring-1 ring-ring/50">
             <Icon name="GraduationCap" className="size-5.5 text-primary-foreground" strokeWidth={1.8} />
           </div>
           <div className="min-w-0">
@@ -157,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
             {/* شعار الجوال */}
             <div className="flex items-center gap-2 lg:hidden">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-primary shadow-soft">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary shadow-soft ring-1 ring-ring/50">
                 <Icon name="GraduationCap" className="size-4.5 text-primary-foreground" strokeWidth={1.8} />
               </div>
               <span className="hidden text-sm font-bold min-[390px]:inline">ملف إنجازي</span>

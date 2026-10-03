@@ -43,8 +43,8 @@ export function ProgressRing({
         />
         <defs>
           <linearGradient id="ring-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#12907c" />
-            <stop offset="100%" stopColor="#0a5d51" />
+            <stop offset="0%" stopColor="#1B2A41" />
+            <stop offset="100%" stopColor="#B8956A" />
           </linearGradient>
         </defs>
       </svg>
@@ -70,7 +70,7 @@ export function ProgressBar({ value, className = '', thickness = 'h-2' }: { valu
       role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}
     >
       <div
-        className="h-full rounded-full bg-gradient-to-l from-[#12907c] to-[#0a5d51]"
+        className="h-full rounded-full bg-gradient-to-l from-[#1B2A41] to-[#B8956A]"
         style={{ width: `${animated}%`, transition: 'width 0.9s cubic-bezier(0.22, 1, 0.36, 1)' }}
       />
     </div>

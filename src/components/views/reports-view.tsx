@@ -30,37 +30,37 @@ const REPORTS: ReportDef[] = [
   {
     key: 'full', title: 'تقرير ملف الإنجاز الكامل', icon: 'BookOpen', pages: 'متعدد الصفحات',
     desc: 'غلاف فاخر، فهرس تلقائي، صفحة عنوان لكل مجال، وكل إنجاز بتفاصيله وشواهده — التقرير الرسمي لملفك.',
-    accent: 'from-emerald-600 to-teal-700',
+    accent: 'from-[#1B2A41] to-[#34507D]',
   },
   {
     key: 'official', title: 'التقرير الرسمي للإنجاز', icon: 'FileBadge', pages: 'صفحة A4 غالبًا',
     desc: 'تقرير تنفيذ رسمي لإنجاز واحد: ترويسة الجهة، معلومات عامة، أهداف، تنفيذ، نتائج وأثر، صور، وتوقيع — بروح التقارير المدرسية الرسمية.',
-    accent: 'from-slate-700 to-emerald-700',
+    accent: 'from-[#14203A] to-[#8A6D2E]',
   },
   {
     key: 'summary', title: 'تقرير ملخص الإنجازات', icon: 'ClipboardList', pages: 'صفحة أو صفحتان',
     desc: 'لمحة سريعة: عدد الإنجازات، المبادرات، ساعات التطوير، متوسط التحسن، وأبرز الإنجازات.',
-    accent: 'from-teal-600 to-cyan-700',
+    accent: 'from-[#2A3F63] to-[#4A6A99]',
   },
   {
     key: 'impact', title: 'تقرير الأثر المهني', icon: 'TrendingUp', pages: 'صفحة أو صفحتان',
     desc: 'أثرك مقيسًا: الوضع قبل، الإجراء، الوضع بعد، ونسبة التحسن — برسوم بسيطة وواضحة.',
-    accent: 'from-emerald-600 to-lime-700',
+    accent: 'from-[#34507D] to-[#B8956A]',
   },
   {
     key: 'pd', title: 'تقرير التطوير المهني', icon: 'GraduationCap', pages: 'صفحة واحدة غالبًا',
     desc: 'كل برامجك التدريبية مع الجهات والساعات، وإجمالي ساعات التطوير المهني وأثرها.',
-    accent: 'from-teal-600 to-emerald-700',
+    accent: 'from-[#1B2A41] to-[#5B7BA8]',
   },
   {
     key: 'initiatives', title: 'تقرير المبادرات', icon: 'Rocket', pages: 'صفحة أو صفحتان',
     desc: 'ملخص كل مبادراتك مع عدد المستفيدين والنتائج والأثر.',
-    accent: 'from-emerald-700 to-teal-600',
+    accent: 'from-[#8A6D2E] to-[#1B2A41]',
   },
   {
     key: 'custom', title: 'تصدير مخصص', icon: 'Layers', pages: 'حسب اختيارك',
     desc: 'حدد المجالات التي تريدها فقط، وأنشئ تقريرًا يلبي حاجة محددة — مثل عرض مشرف أو لجنة.',
-    accent: 'from-slate-600 to-emerald-700',
+    accent: 'from-[#2A3F63] to-[#A8863C]',
   },
 ]
 

@@ -8,7 +8,7 @@ export function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     success: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
     warning: 'bg-orange-50 text-orange-700 border-orange-200/70',
-    info: 'bg-teal-50 text-teal-700 border-teal-200/70',
+    info: 'bg-sky-50 text-sky-800 border-sky-200/70',
     muted: 'bg-muted text-muted-foreground border-border',
   }
   return (

@@ -199,7 +199,7 @@ export function ReportPreview() {
           <Icon name="Printer" className="size-4" />
           <span className="hidden sm:inline">طباعة</span>
         </Button>
-        <Button onClick={download} className="min-h-10 gap-2 rounded-xl bg-white px-4 text-sm font-bold text-emerald-900 hover:bg-emerald-50">
+        <Button onClick={download} className="min-h-10 gap-2 rounded-xl bg-white px-4 text-sm font-bold text-[#1B2A41] hover:bg-[#F7F1E1]">
           <Icon name="Download" className="size-4" />
           <span className="hidden sm:inline">تنزيل PDF</span>
           <span className="sm:hidden">PDF</span>
@@ -214,7 +214,7 @@ export function ReportPreview() {
     return (
       <div id="report-preview-overlay" className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-200" dir="rtl">
         <div className="text-center">
-          <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-emerald-700 border-t-transparent" />
+          <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <p className="text-sm text-neutral-600">جارٍ تحميل بيانات التقرير…</p>
         </div>
       </div>

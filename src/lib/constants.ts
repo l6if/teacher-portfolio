@@ -167,7 +167,7 @@ export const SECTION_ACTION: Partial<Record<SectionKey, { label: string; type?: 
 }
 
 export const ATTACHMENT_KINDS: Record<string, { label: string; icon: string; color: string }> = {
-  IMAGE: { label: 'صورة', icon: 'Image', color: '#0e7f6e' },
+  IMAGE: { label: 'صورة', icon: 'Image', color: '#9A7B4F' },
   PDF: { label: 'ملف PDF', icon: 'FileText', color: '#c0392b' },
   DOC: { label: 'مستند', icon: 'FileText', color: '#2d6a9f' },
   SHEET: { label: 'جدول', icon: 'Table', color: '#1e7d46' },

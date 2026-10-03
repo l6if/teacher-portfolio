@@ -50,7 +50,7 @@ export function ReportBody({ config, data }: { config: PrintConfig; data: Report
   const pdHours = pdItems.reduce((s, a) => s + (a.hours ?? 0), 0)
   const initItems = byType(['INITIATIVE'])
   const totalBeneficiaries = initItems.reduce((s, a) => s + (a.beneficiariesCount ?? 0), 0)
-  const rootStyle: React.CSSProperties = { fontFamily: 'var(--font-readex), Tahoma, sans-serif', color: RC.ink }
+  const rootStyle: React.CSSProperties = { fontFamily: 'var(--font-plex), Tahoma, sans-serif', color: RC.ink }
 
   /** هل للقسم محتوى فعلي؟ — الأقسام الفارغة تُستبعد كليًا */
   const hasContent = (key: string): boolean => {
@@ -909,7 +909,7 @@ export function ReportPrint() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+          <div className="mx-auto mb-4 size-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <p className="text-sm text-gray-600">جارٍ تجهيز التقرير…</p>
         </div>
       </div>

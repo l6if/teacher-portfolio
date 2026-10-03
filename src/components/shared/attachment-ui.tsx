@@ -185,7 +185,7 @@ export function ImpactBars({
           </div>
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-primary/10">
             <div
-              className="h-full rounded-full bg-gradient-to-l from-[#12907c] to-[#0a5d51]"
+              className="h-full rounded-full bg-gradient-to-l from-[#1B2A41] to-[#B8956A]"
               style={{ width: width(post) }}
             />
           </div>

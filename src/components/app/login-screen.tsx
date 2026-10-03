@@ -69,7 +69,7 @@ export function LoginScreen({
       <div className="pointer-events-none absolute -top-32 right-1/2 size-[480px] translate-x-1/2 rounded-full bg-primary/6 blur-3xl" />
       <div className="relative w-full max-w-md anim-fade-up">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-3xl bg-primary shadow-lift">
+          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-3xl bg-primary shadow-lift ring-1 ring-ring/60 ring-offset-2 ring-offset-background">
             <Icon name="GraduationCap" className="size-8 text-primary-foreground" strokeWidth={1.7} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">ملف إنجاز المعلم</h1>
